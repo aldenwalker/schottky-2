@@ -1848,7 +1848,7 @@ void IFSGui::draw_mand() {
       
       if (mand_connected && !mand_grid_connected_valid) {
         //temp_IFS.set_params(c*c,c*c);
-        if (true) { //!limit_nifs && !limit_gifs) {
+        if (!limit_nifs && !limit_gifs) {
           if (!temp_IFS.is_connected(mand_connected_depth, mand_data_grid[i][j].x) ) {
             mand_data_grid[i][j].x = -1;
           }
@@ -2572,7 +2572,7 @@ void IFSGui::reset_and_pack_window() {
     W_limit_uv_graph_depth_label = WidgetText(this, T.str(), -1, 20);
     W_limit_uv_graph_depth_rightarrow = WidgetRightArrow(this, 20, 20, &IFSGui::S_limit_uv_graph_increase_depth);
     W_limit_nifs = WidgetCheck(this, "nIFS", -1, 20, limit_nifs, &IFSGui::S_limit_nifs);
-    //W_limit_gifs = WidgetCheck(this, "gIFS", -1, 20, limit_gifs, &IFSGui::S_limit_gifs);
+    W_limit_gifs = WidgetCheck(this, "gIFS", -1, 20, limit_gifs, &IFSGui::S_limit_gifs);
     W_limit_2d = WidgetCheck(this, "2d IFS", -1, 20, limit_2d, &IFSGui::S_limit_2d);
     
     pack_widget_upper_right(NULL, &W_limit_plot);
@@ -2597,7 +2597,7 @@ void IFSGui::reset_and_pack_window() {
     pack_widget_upper_right(&W_limit_uv_graph_depth_leftarrow, &W_limit_uv_graph_depth_label);
     pack_widget_upper_right(&W_limit_uv_graph_depth_label, &W_limit_uv_graph_depth_rightarrow);
     pack_widget_upper_right(&W_limit_plot, &W_limit_nifs);
-    //pack_widget_upper_right(&W_limit_plot, &W_limit_gifs);
+    pack_widget_upper_right(&W_limit_plot, &W_limit_gifs);
     pack_widget_upper_right(&W_limit_plot, &W_limit_2d);
     
   }
