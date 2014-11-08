@@ -133,16 +133,35 @@ bool gIFS::is_connected(int depth, int& difficulty) {
     stack.pop_back();
     if (bp.first.ball.is_disjoint(bp.second.ball)) {
       continue;
-    } else if (bp.first.depth >= depth) {
+    } else if (bp.first.depth >= depth || bp.second.depth >= depth) {
       //std::cout << "Yep connected\n";
       return true;
     }
-    for (int i=0; i<(int)centers.size(); ++i) {
-      gBall new_b1 = act_on_right(i, bp.first.ball);
-      for (int j=0; j<(int)centers.size(); ++j) {
-        gBall new_b2 = act_on_right(j, bp.second.ball);
-        stack.push_back(std::make_pair(gBall_stuff(false, bp.first.last_gen, bp.first.depth+1, new_b1),
-                                       gBall_stuff(false, bp.second.last_gen, bp.second.depth+1, new_b2)) );
+    //now we need to subdivide.  But if one of the balls is too big, 
+    //just subdivide that one
+    std::vector<gBall_stuff> new_b1s(0);
+    if (bp.second.ball.radius > 2*bp.first.ball.radius) {
+      new_b1s.resize(1);
+      new_b1s[0] = gBall_stuff(false, bp.first.last_gen, bp.first.depth, bp.first.ball);
+    } else {
+      new_b1s.resize(centers.size());
+      for (int i=0; i<(int)centers.size(); ++i) {
+        new_b1s[i] = gBall_stuff(false, bp.first.last_gen, bp.first.depth+1, act_on_right(i, bp.first.ball));
+      }
+    }
+    std::vector<gBall_stuff> new_b2s(0);
+    if (bp.first.ball.radius > 2*bp.second.ball.radius) {
+      new_b2s.resize(1);
+      new_b2s[0] = gBall_stuff(false, bp.second.last_gen, bp.second.depth, bp.second.ball);
+    } else {
+      new_b2s.resize(centers.size());
+      for (int i=0; i<(int)centers.size(); ++i) {
+        new_b2s[i] = gBall_stuff(false, bp.second.last_gen, bp.second.depth+1, act_on_right(i, bp.second.ball));
+      }
+    }
+    for (int i=0; i<(int)new_b1s.size(); ++i) {
+      for (int j=0; j<(int)new_b2s.size(); ++j) {
+        stack.push_back(std::make_pair( new_b1s[i], new_b2s[j] ));
       }
     }
     ++difficulty;

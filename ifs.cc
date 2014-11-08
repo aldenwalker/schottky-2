@@ -1145,10 +1145,10 @@ bool ifs::compute_coordinates(double* theta, double* lambda, int n_depth) {
   }
   
   //find where this stripped block exists in the word boundary
-  int stripped_block_start;
-  int stripped_block_end;
-  int stripped_block_middle;
-  int stripped_block_len;
+  int stripped_block_start=0;
+  int stripped_block_end=0;
+  int stripped_block_middle=0;
+  int stripped_block_len=0;
   int wL = word_boundary[0].len;
   //find where the stripped interval begins and ends
   //to make sure we have the correct position, we 
