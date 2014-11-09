@@ -93,6 +93,7 @@ struct Bitword {
     len = L;
   }
   bool operator<(const Bitword& b) const;
+  int common_prefix(const Bitword& b) const;
   Bitword prefix(int n) const;
   Bitword suffix(int n) const;
   std::string str() const;
@@ -184,6 +185,8 @@ class ifs{
     
     //IFS coordinate computation
     bool compute_coordinates(double* theta, double* lambda, int n_depth);
+    bool compute_new_theta(double* theta, int n_depth);
+    
     
     //mandelbrot mode
     cpx center;            // center of screen in mandelbrot mode

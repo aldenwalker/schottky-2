@@ -1430,7 +1430,7 @@ void IFSGui::draw_gifs_limit() {
       continue;
     }
     //if the ball isn't disjoint from the window, maybe it is contained in it?
-    for (int i=0; i<gifs.centers.size(); ++i) {
+    for (int i=0; i<(int)gifs.centers.size(); ++i) {
       gBall new_ball = gifs.act_on_right(i, bs.ball);
       if (bs.contained) {
         stack.push_back(gBall_stuff(true, (bs.last_gen==-1 ? i : bs.last_gen), bs.depth+1, new_ball));
@@ -2249,9 +2249,10 @@ void IFSGui::recompute_point_data() {
   } else {    
     point_coordinates_theta = -1;
     point_coordinates_lambda = -1;
-    (void) IFS.compute_coordinates(&point_coordinates_theta, 
-                                &point_coordinates_lambda, 
-                                point_coordinates_depth);
+    //(void) IFS.compute_coordinates(&point_coordinates_theta, 
+    //                            &point_coordinates_lambda, 
+    //                            point_coordinates_depth);
+    (void)IFS.compute_new_theta(&point_coordinates_theta, point_coordinates_depth);
     T.str("");
     T << "Theta: " << point_coordinates_theta << " Lambda: " << point_coordinates_lambda;
   }
@@ -2267,11 +2268,13 @@ void IFSGui::find_coordinates_along_path(int verbose) {
     temp_IFS.set_params(path.path[i], path.path[i]);
     double t1, ell1;
     double t2, ell2;
-    if (temp_IFS.compute_coordinates( &t1, &ell1, mand_theta_depth ) &&
-        temp_IFS.compute_coordinates( &t2, &ell2, mand_theta_depth+1) ) {
-      if (abs(t1) < 1 && abs(t2) < 1 && abs(ell1) < 3 && abs(ell2) < 3) {
-        path.coordinates.push_back( std::make_pair( 0.5*(t1+t2), 0.5*(ell1+ell2)) );
-      }
+    //if (temp_IFS.compute_coordinates( &t1, &ell1, mand_theta_depth ) &&
+    //    temp_IFS.compute_coordinates( &t2, &ell2, mand_theta_depth+1) ) {
+    //  if (abs(t1) < 1 && abs(t2) < 1 && abs(ell1) < 3 && abs(ell2) < 3) {
+    //    path.coordinates.push_back( std::make_pair( 0.5*(t1+t2), 0.5*(ell1+ell2)) );
+    //  }
+    if (temp_IFS.compute_new_theta( &t1, mand_theta_depth )) {
+      path.coordinates.push_back( std::make_pair( t1, -1) );
     }
   }
   for (int i=0; i<(int)path.coordinates.size(); ++i) {

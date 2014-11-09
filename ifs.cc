@@ -122,6 +122,12 @@ Bitword Bitword::suffix(int n) const {
   std::bitset<64> b(s);
   return Bitword(b, n);
 }
+
+int Bitword::common_prefix(const Bitword& b) const {
+  int p = 0;
+  while (reverse_get(p) != b.reverse_get(p)) ++p;
+  return p;
+}
   
 std::string Bitword::str() const {
   return w.to_string().substr(64-len, len);
@@ -1216,6 +1222,287 @@ bool ifs::compute_coordinates(double* theta, double* lambda, int n_depth) {
   
   return true;
 }
+
+
+
+
+
+
+//this computes only theta with the new method
+bool ifs::compute_new_theta(double* theta, int n_depth) {
+  
+  int verbose = 0;
+  
+  //check if we are in the reasonable region 
+  if (abs(z) > 1.0/sqrt(2.0) + 0.01) return false;
+  
+  //first, compute all the balls
+  ifs temp_IFS;
+  temp_IFS.set_params(z,z);
+  temp_IFS.depth = n_depth;
+  
+  //find all the balls
+  double min_r;
+  if (!temp_IFS.minimal_enclosing_radius(min_r))  return false;
+  if (!temp_IFS.circ_connected(min_r)) return false;
+  
+  Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
+  std::vector<Ball> balls(0);
+  temp_IFS.compute_balls(balls, initial_ball, n_depth);
+  
+  //get a box which contains the balls
+  cpx ll, ur;
+  temp_IFS.box_containing_balls(balls, ll, ur);
+  cpx box_center = 0.5*(ur + ll);
+  double box_radius = 0.5*(ur.real() - ll.real());
+  
+  //make the box slightly larger so that we make sure the 
+  //balls have some room around them
+  box_radius *= 1.05;
+  ll = cpx(box_center.real()-box_radius, box_center.imag()-box_radius);
+  ur = cpx(box_center.real()+box_radius, box_center.imag()+box_radius);
+  
+  //figure out how big the pixels should be
+  //(the ball radius ought to be about 2 pixel diameters)
+  double desired_pixel_diameter = balls[0].radius/2.5;
+  int num_pixels = int( (2*box_radius)/desired_pixel_diameter + 1 );
+  if (num_pixels > 1000) num_pixels = 1000;  
+  
+  //create a trap grid from the balls
+  TrapGrid TG;
+  TG.reset_grid(ll, ur, num_pixels);
+  TG.fill_pixels(balls);
+  
+  //compute the boundary (the third coordinate is unused, so 
+  //we need to set it to zero)
+  std::vector<Point3d<int> > pixel_boundary(0);
+  TG.compute_boundary(pixel_boundary);
+  for (int i=0; i<(int)pixel_boundary.size(); ++i) {
+    pixel_boundary[i].z=0;
+  }
+  if (verbose>0) TG.show(NULL, &pixel_boundary, NULL, NULL, NULL);
+  
+  //get the list of uv words from the boundary
+  std::vector<Bitword> unreduced_word_boundary(pixel_boundary.size());
+  for (int i=0; i<(int)pixel_boundary.size(); ++i) {
+    int ii = pixel_boundary[i].x;
+    int jj = pixel_boundary[i].y;
+    int ball_index = -1;
+    if (TG.grid[ii][jj].z_ball_status > 0) {
+      ball_index = TG.grid[ii][jj].closest_z_ball;
+    } else {
+      ball_index = TG.grid[ii][jj].closest_w_ball;
+    }   
+    unreduced_word_boundary[i] = Bitword( balls[ball_index].word, 
+                                          balls[ball_index].word_len );
+    //std::cout << i << ": " << unreduced_word_boundary[i] << "\n";
+  }
+  
+  //reduce the boundary
+  //this rotates the boundary so that it starts with a 0
+  //and then removes any duplicates (which are next to each other)
+  int start_index = 0;
+  int M = (int)pixel_boundary.size();
+  while (unreduced_word_boundary[start_index].reverse_get(0) != 1 || 
+         unreduced_word_boundary[(start_index+1)%M].reverse_get(0) != 0) ++start_index;
+  start_index = (start_index+1)%M;
+  std::vector<Bitword> word_boundary(0);
+  word_boundary.push_back(unreduced_word_boundary[start_index]);
+  for (int i=1; i<M; ++i) {
+    Bitword b = unreduced_word_boundary[(start_index+i)%M];
+    if (b != word_boundary.back()) {
+      word_boundary.push_back(b);
+    }
+  }
+  
+  if (verbose>0) { 
+    std::cout << "Full word boundary:\n";
+    for (int i=0; i<(int)word_boundary.size(); ++i) {
+      std::cout << i << ": " << word_boundary[i] << "\n";
+    }
+  }
+
+
+
+  //**********************************************************
+
+  //now we have to repeat this with just the 0's
+  //we'll use the same size grid to make sure 
+  //all the balls match up
+  
+  //get the zero balls
+  std::vector<Ball> zero_balls(0);
+  for (int i=0; i<(int)balls.size(); ++i) {
+    Bitword b (balls[i].word, balls[i].word_len);
+    if (b.reverse_get(0) == 0) {
+      zero_balls.push_back(balls[i]);
+    }
+  }
+  
+  //create a trap grid from the balls
+  TrapGrid TG0;
+  TG0.reset_grid(ll, ur, num_pixels);
+  TG0.fill_pixels(zero_balls);
+  
+  //compute the boundary (the third coordinate is unused, so 
+  //we need to set it to zero)
+  std::vector<Point3d<int> > zero_pixel_boundary(0);
+  TG0.compute_boundary(zero_pixel_boundary);
+  for (int i=0; i<(int)zero_pixel_boundary.size(); ++i) {
+    pixel_boundary[i].z=0;
+  }
+  if (verbose>0) TG0.show(NULL, &zero_pixel_boundary, NULL, NULL, NULL);
+
+  //get the list of uv words from the boundary
+  std::vector<Bitword> zero_unreduced_word_boundary(zero_pixel_boundary.size());
+  for (int i=0; i<(int)zero_pixel_boundary.size(); ++i) {
+    int ii = zero_pixel_boundary[i].x;
+    int jj = zero_pixel_boundary[i].y;
+    int ball_index = -1;
+    if (TG0.grid[ii][jj].z_ball_status > 0) {
+      ball_index = TG0.grid[ii][jj].closest_z_ball;
+    } else {
+      ball_index = TG0.grid[ii][jj].closest_w_ball;
+    }   
+    zero_unreduced_word_boundary[i] = Bitword( zero_balls[ball_index].word, 
+                                               zero_balls[ball_index].word_len );
+    //std::cout << i << ": " << unreduced_word_boundary[i] << "\n";
+  }
+  
+  //remove any duplicates (which are next to each other)
+  M = (int)zero_unreduced_word_boundary.size();
+  std::vector<Bitword> zero_word_boundary(0);
+  zero_word_boundary.push_back(zero_unreduced_word_boundary[0]);
+  for (int i=1; i<M; ++i) {
+    Bitword b = zero_unreduced_word_boundary[i];
+    if (b != zero_word_boundary.back()) {
+      zero_word_boundary.push_back(b);
+    }
+  }
+  while (zero_word_boundary.back() == zero_word_boundary.front()) {
+    zero_word_boundary.erase( zero_word_boundary.begin() + (zero_word_boundary.size()-1) );
+  }
+  
+  if (verbose>0) { 
+    std::cout << "Zero word boundary:\n";
+    for (int i=0; i<(int)zero_word_boundary.size(); ++i) {
+      std::cout << i << ": " << zero_word_boundary[i] << "\n";
+    }
+  }
+  
+  
+  //*****************************************************************
+  
+  //find where the first two and last two zero words in the big list are in the 
+  //zero list
+  Bitword z0 = word_boundary[0];
+  Bitword z1 = word_boundary[1];
+  int last_zero=0;
+  while (word_boundary[last_zero+1].reverse_get(0) == 0) ++last_zero;
+  if (last_zero==0) {
+    std::cout << "Weird parameter: " << z << "\n";
+    return false;
+  }
+  Bitword z_1 = word_boundary[last_zero];
+  Bitword z_2 = word_boundary[last_zero-1];
+ 
+  if (verbose>0) {
+    std::cout << "Found first two zero words: " << z0 << " " << z1 << "\n";
+    std::cout << "And last two: " << z_2 << " " << z_1 << "\n";
+  }
+  
+    //figure out where the block of main zeros is in the list of zeros
+  
+  int zero_block_start=0;
+  int zero_block_last=0;
+  M = (int)zero_word_boundary.size();
+  for (int i=0; i<(int)zero_word_boundary.size(); ++i) {
+    if (zero_word_boundary[i] == z0 && zero_word_boundary[(i+1)%M] == z1) {
+      zero_block_start = i;
+    }
+    if (zero_word_boundary[i] == z_2 && zero_word_boundary[(i+1)%M] == z_1) {
+      zero_block_last = (i+1)%M;
+    }
+  }
+  
+  if (verbose > 0) {
+    std::cout << "Zero block start: " << zero_block_start << "\n";
+    std::cout << "Zero block last: " << zero_block_last << "\n";
+  }
+  int zero_block_len = -1;
+  if (zero_block_start == zero_block_last || 
+      (zero_block_last+1)%M == zero_block_start) {
+    zero_block_len = zero_word_boundary.size();
+  } else {
+    zero_block_len = (zero_block_last+1)-zero_block_start;
+  }
+  if (zero_block_len < 0) zero_block_len += M;
+  int zero_block_remainder = M - zero_block_len;
+  
+  if (verbose > 0) {
+    std::cout << "zero block len: " << zero_block_len << "\n";
+    std::cout << "Zero block remainder: " << zero_block_remainder << "\n";
+  }
+  
+  //find the position of the stripped middle zero block entry
+  int zero_block_middle = (zero_block_start + zero_block_len/2)%M;
+  int zero_block_middle_in_word_boundary = 0 + zero_block_len/2;
+  Bitword stripped_middle = zero_word_boundary[zero_block_middle];
+  stripped_middle = stripped_middle.suffix(stripped_middle.len-1);
+  
+  int stripped_middle_preimage = 0;
+  for (int i=0; i<(int)word_boundary.size(); ++i) {
+    if (word_boundary[i].prefix(word_boundary[i].len-1) == stripped_middle) {
+      stripped_middle_preimage = i;
+      break;
+    }
+  }
+  
+  if (verbose>0) {
+    std::cout << "zero block middle: " << zero_block_middle << "\n";
+    std::cout << "zero block middle in word boundary: " << zero_block_middle_in_word_boundary << "\n";
+    std::cout << "Stripped middle word: " << stripped_middle << "\n";
+    std::cout << "Stripped middle preimage: " << stripped_middle_preimage << "\n";
+  }
+  
+  double distance_to_preimage = 0;
+  double distance_completely_around = 0;
+  double maximal_insertion_amount = zero_block_remainder;
+  bool passed_preimage = false;
+  M = word_boundary.size();
+  int raw_distance_to_preimage = 0;
+  int raw_distance_around = 0;
+  for (int i=(zero_block_middle_in_word_boundary+1)%M; 
+           i!=zero_block_middle_in_word_boundary; 
+           i=(i+1)%M) {
+    if (i==stripped_middle_preimage) passed_preimage = true;
+    int common_prefix = word_boundary[i].common_prefix(word_boundary[(i+1)%M]);
+    double amount_from_this_step = pow(abs(z), common_prefix)*maximal_insertion_amount;
+    if (!passed_preimage) {
+      ++raw_distance_to_preimage;
+      distance_to_preimage += amount_from_this_step+1;
+    }
+    ++raw_distance_around;
+    distance_completely_around += amount_from_this_step+1;
+  }
+  
+  if (verbose>0) {
+    std::cout << "Maximal insertion amount: " << maximal_insertion_amount << "\n";
+    std::cout << "Raw distance to preimage: " << raw_distance_to_preimage << "\n";
+    std::cout << "Distance to preimage: " << distance_to_preimage << "\n";
+    std::cout << "Raw distance around: " << raw_distance_around << "\n";
+    std::cout << "Distance completely around: " << distance_completely_around << "\n";
+  }
+  
+  *theta = distance_to_preimage / distance_completely_around;
+  return true;
+}
+  
+
+
+
+
+
 
 
 
