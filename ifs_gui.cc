@@ -2255,6 +2255,9 @@ void IFSGui::recompute_point_data() {
     (void)IFS.compute_new_theta(&point_coordinates_theta, point_coordinates_depth);
     T.str("");
     T << "Theta: " << point_coordinates_theta << " Lambda: " << point_coordinates_lambda;
+    std::vector<Bitword> X;
+    std::vector<std::pair<int,int> > lam;
+    (void)IFS.compute_boundary_space(X,lam, point_coordinates_depth);
   }
   W_point_coordinates_status.update_text(T.str());
 }

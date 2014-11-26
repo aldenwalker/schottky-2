@@ -144,6 +144,11 @@ int Bitword::reverse_get(int n) const {
 }
 
 
+void Bitword::reverse_set(int n, int b) {
+  w.set(len-n-1, b==1);
+} 
+
+
 cpx Bitword::apply(cpx z, cpx x) const {
   cpx ans = x;
   for (int i=0; i<(int)len; ++i) {
@@ -1233,6 +1238,136 @@ bool ifs::compute_new_theta(double* theta, int n_depth) {
   
   int verbose = 0;
   
+  std::vector<Bitword> word_boundary;
+  std::vector<Bitword> zero_word_boundary;
+  
+  if (!compute_boundary_and_f_boundary(word_boundary, 
+                                       zero_word_boundary, 
+                                       n_depth,
+                                       verbose)) {
+    return false;
+  }
+  
+  //*****************************************************************
+  
+  //find where the first two and last two zero words in the big list are in the 
+  //zero list
+  Bitword z0 = word_boundary[0];
+  Bitword z1 = word_boundary[1];
+  int last_zero=0;
+  while (word_boundary[last_zero+1].reverse_get(0) == 0) ++last_zero;
+  if (last_zero==0) {
+    std::cout << "Weird parameter: " << z << "\n";
+    return false;
+  }
+  Bitword z_1 = word_boundary[last_zero];
+  Bitword z_2 = word_boundary[last_zero-1];
+ 
+  if (verbose>0) {
+    std::cout << "Found first two zero words: " << z0 << " " << z1 << "\n";
+    std::cout << "And last two: " << z_2 << " " << z_1 << "\n";
+  }
+  
+  //figure out where the block of main zeros is in the list of zeros
+  
+  int zero_block_start=0;
+  int zero_block_last=0;
+  int M = (int)zero_word_boundary.size();
+  for (int i=0; i<(int)zero_word_boundary.size(); ++i) {
+    if (zero_word_boundary[i] == z0 && zero_word_boundary[(i+1)%M] == z1) {
+      zero_block_start = i;
+    }
+    if (zero_word_boundary[i] == z_2 && zero_word_boundary[(i+1)%M] == z_1) {
+      zero_block_last = (i+1)%M;
+    }
+  }
+  
+  if (verbose > 0) {
+    std::cout << "Zero block start: " << zero_block_start << "\n";
+    std::cout << "Zero block last: " << zero_block_last << "\n";
+  }
+  int zero_block_len = -1;
+  if (zero_block_start == zero_block_last || 
+      (zero_block_last+1)%M == zero_block_start) {
+    zero_block_len = zero_word_boundary.size();
+  } else {
+    zero_block_len = (zero_block_last+1)-zero_block_start;
+  }
+  if (zero_block_len < 0) zero_block_len += M;
+  int zero_block_remainder = M - zero_block_len;
+  
+  if (verbose > 0) {
+    std::cout << "zero block len: " << zero_block_len << "\n";
+    std::cout << "Zero block remainder: " << zero_block_remainder << "\n";
+  }
+  
+  //find the position of the stripped middle zero block entry
+  int zero_block_middle = (zero_block_start + zero_block_len/2)%M;
+  int zero_block_middle_in_word_boundary = 0 + zero_block_len/2;
+  Bitword stripped_middle = zero_word_boundary[zero_block_middle];
+  stripped_middle = stripped_middle.suffix(stripped_middle.len-1);
+  
+  int stripped_middle_preimage = 0;
+  for (int i=0; i<(int)word_boundary.size(); ++i) {
+    if (word_boundary[i].prefix(word_boundary[i].len-1) == stripped_middle) {
+      stripped_middle_preimage = i;
+      break;
+    }
+  }
+  
+  if (verbose>0) {
+    std::cout << "zero block middle: " << zero_block_middle << "\n";
+    std::cout << "zero block middle in word boundary: " << zero_block_middle_in_word_boundary << "\n";
+    std::cout << "Stripped middle word: " << stripped_middle << "\n";
+    std::cout << "Stripped middle preimage: " << stripped_middle_preimage << "\n";
+  }
+  
+  double distance_to_preimage = 0;
+  double distance_completely_around = 0;
+  double maximal_insertion_amount = zero_block_remainder;
+  bool passed_preimage = false;
+  M = word_boundary.size();
+  int raw_distance_to_preimage = 0;
+  int raw_distance_around = 0;
+  for (int i=(zero_block_middle_in_word_boundary+1)%M; 
+           i!=zero_block_middle_in_word_boundary; 
+           i=(i+1)%M) {
+    if (i==stripped_middle_preimage) passed_preimage = true;
+    int common_prefix = word_boundary[i].common_prefix(word_boundary[(i+1)%M]);
+    double amount_from_this_step = pow(abs(z), common_prefix)*maximal_insertion_amount;
+    if (!passed_preimage) {
+      ++raw_distance_to_preimage;
+      distance_to_preimage += amount_from_this_step+1;
+    }
+    ++raw_distance_around;
+    distance_completely_around += amount_from_this_step+1;
+  }
+  
+  if (verbose>0) {
+    std::cout << "Maximal insertion amount: " << maximal_insertion_amount << "\n";
+    std::cout << "Raw distance to preimage: " << raw_distance_to_preimage << "\n";
+    std::cout << "Distance to preimage: " << distance_to_preimage << "\n";
+    std::cout << "Raw distance around: " << raw_distance_around << "\n";
+    std::cout << "Distance completely around: " << distance_completely_around << "\n";
+  }
+  
+  *theta = distance_to_preimage / distance_completely_around;
+  return true;
+}
+  
+
+
+
+
+
+//returns the complete boundary of the limit set, in words
+//and the complete boundary of fL.  They are shifted so they begin
+//with as many zeros as possible (i.e. fL begins 00)
+bool ifs::compute_boundary_and_f_boundary(std::vector<Bitword>& whole_boundary, 
+                                          std::vector<Bitword>& f_boundary,
+                                          int n_depth,
+                                          int verbose) {
+  
   //check if we are in the reasonable region 
   if (abs(z) > 1.0/sqrt(2.0) + 0.01) return false;
   
@@ -1383,6 +1518,17 @@ bool ifs::compute_new_theta(double* theta, int n_depth) {
     zero_word_boundary.erase( zero_word_boundary.begin() + (zero_word_boundary.size()-1) );
   }
   
+  //rotate so it starts 00 and ends 01
+  int k=0;
+  M = (int)zero_word_boundary.size();
+  while (zero_word_boundary[k].reverse_get(1) == 0) k = (k+1)%M;
+  while (zero_word_boundary[k].reverse_get(1) == 1) k = (k+1)%M;
+  //k is now the index of the first place we have 00
+  std::vector<Bitword> new_vec(zero_word_boundary.begin() + k, zero_word_boundary.end());
+  new_vec.insert(new_vec.end(), zero_word_boundary.begin(), zero_word_boundary.begin()+k);
+  zero_word_boundary = new_vec;
+  
+  
   if (verbose>0) { 
     std::cout << "Zero word boundary:\n";
     for (int i=0; i<(int)zero_word_boundary.size(); ++i) {
@@ -1390,117 +1536,108 @@ bool ifs::compute_new_theta(double* theta, int n_depth) {
     }
   }
   
+  whole_boundary = word_boundary;
+  f_boundary = zero_word_boundary;
   
-  //*****************************************************************
+  return true;
+}
+
+
+
+bool ifs::compute_boundary_space(std::vector<Bitword>& X, 
+                                 std::vector<std::pair<int, int> >& lamination,
+                                 int n_depth) {
+  int verbose = 1;
   
-  //find where the first two and last two zero words in the big list are in the 
-  //zero list
-  Bitword z0 = word_boundary[0];
-  Bitword z1 = word_boundary[1];
-  int last_zero=0;
-  while (word_boundary[last_zero+1].reverse_get(0) == 0) ++last_zero;
-  if (last_zero==0) {
-    std::cout << "Weird parameter: " << z << "\n";
+  std::vector<Bitword> word_boundary;
+  std::vector<Bitword> zero_word_boundary;
+  
+  if (!compute_boundary_and_f_boundary(word_boundary, 
+                                       zero_word_boundary, 
+                                       n_depth,
+                                       0)) {
     return false;
   }
-  Bitword z_1 = word_boundary[last_zero];
-  Bitword z_2 = word_boundary[last_zero-1];
- 
+  
   if (verbose>0) {
-    std::cout << "Found first two zero words: " << z0 << " " << z1 << "\n";
-    std::cout << "And last two: " << z_2 << " " << z_1 << "\n";
-  }
-  
-    //figure out where the block of main zeros is in the list of zeros
-  
-  int zero_block_start=0;
-  int zero_block_last=0;
-  M = (int)zero_word_boundary.size();
-  for (int i=0; i<(int)zero_word_boundary.size(); ++i) {
-    if (zero_word_boundary[i] == z0 && zero_word_boundary[(i+1)%M] == z1) {
-      zero_block_start = i;
+    std::cout << "Whole boundary: \n";
+    for (int i=0; i<(int)word_boundary.size(); ++i) {
+      std::cout << i << ": " << word_boundary[i] << "\n";
     }
-    if (zero_word_boundary[i] == z_2 && zero_word_boundary[(i+1)%M] == z_1) {
-      zero_block_last = (i+1)%M;
+    std::cout << "Zero boundary: \n";
+    for (int i=0; i<(int)word_boundary.size(); ++i) {
+      std::cout << i << ": " << word_boundary[i] << "\n";
     }
   }
   
-  if (verbose > 0) {
-    std::cout << "Zero block start: " << zero_block_start << "\n";
-    std::cout << "Zero block last: " << zero_block_last << "\n";
-  }
-  int zero_block_len = -1;
-  if (zero_block_start == zero_block_last || 
-      (zero_block_last+1)%M == zero_block_start) {
-    zero_block_len = zero_word_boundary.size();
-  } else {
-    zero_block_len = (zero_block_last+1)-zero_block_start;
-  }
-  if (zero_block_len < 0) zero_block_len += M;
-  int zero_block_remainder = M - zero_block_len;
+  //we're going to assume that the boundary of gL is exactly the 
+  //same as the boundary of fL except all the words start with 1
   
-  if (verbose > 0) {
-    std::cout << "zero block len: " << zero_block_len << "\n";
-    std::cout << "Zero block remainder: " << zero_block_remainder << "\n";
-  }
-  
-  //find the position of the stripped middle zero block entry
-  int zero_block_middle = (zero_block_start + zero_block_len/2)%M;
-  int zero_block_middle_in_word_boundary = 0 + zero_block_len/2;
-  Bitword stripped_middle = zero_word_boundary[zero_block_middle];
-  stripped_middle = stripped_middle.suffix(stripped_middle.len-1);
-  
-  int stripped_middle_preimage = 0;
-  for (int i=0; i<(int)word_boundary.size(); ++i) {
-    if (word_boundary[i].prefix(word_boundary[i].len-1) == stripped_middle) {
-      stripped_middle_preimage = i;
+  //find the interval in the zero boundary which lies on the 
+  //inside of the circle
+  std::vector<Bitword> interior_zeros(0);
+  Bitword initial_zeros_1 = word_boundary[0];
+  Bitword initial_zeros_2 = word_boundary[1];
+  int ones_position = 0;
+  while (word_boundary[ones_position].reverse_get(0) == 0) ++ones_position;
+  Bitword final_zeros_1 = word_boundary[ones_position-2];
+  Bitword final_zeros_2 = word_boundary[ones_position-1];
+  int M = (int)zero_word_boundary.size();
+  for (int i=0; i<M; ++i) {
+    if (zero_word_boundary[i] == final_zeros_1 &&
+        zero_word_boundary[(i+1)%M] == final_zeros_2) {
+      for (int j=2; j<M; ++j) {
+        if (zero_word_boundary[(i+j)%M] == initial_zeros_1 &&
+            zero_word_boundary[(i+j+1)%M] == initial_zeros_2) break;
+        interior_zeros.push_back(zero_word_boundary[(i+j)%M]);
+      }
       break;
     }
   }
   
   if (verbose>0) {
-    std::cout << "zero block middle: " << zero_block_middle << "\n";
-    std::cout << "zero block middle in word boundary: " << zero_block_middle_in_word_boundary << "\n";
-    std::cout << "Stripped middle word: " << stripped_middle << "\n";
-    std::cout << "Stripped middle preimage: " << stripped_middle_preimage << "\n";
+    std::cout << "Initial zeros: " << initial_zeros_1 << " " << initial_zeros_2 << "\n";
+    std::cout << "Final zeros: " << final_zeros_1 << " " << final_zeros_2 << "\n";
+    std::cout << "Interior zeros:\n";
+    for (int i=0; i<(int)interior_zeros.size(); ++i) {
+      std::cout << i << ": " << interior_zeros[i] << "\n";
+    }
   }
   
-  double distance_to_preimage = 0;
-  double distance_completely_around = 0;
-  double maximal_insertion_amount = zero_block_remainder;
-  bool passed_preimage = false;
-  M = word_boundary.size();
-  int raw_distance_to_preimage = 0;
-  int raw_distance_around = 0;
-  for (int i=(zero_block_middle_in_word_boundary+1)%M; 
-           i!=zero_block_middle_in_word_boundary; 
-           i=(i+1)%M) {
-    if (i==stripped_middle_preimage) passed_preimage = true;
-    int common_prefix = word_boundary[i].common_prefix(word_boundary[(i+1)%M]);
-    double amount_from_this_step = pow(abs(z), common_prefix)*maximal_insertion_amount;
-    if (!passed_preimage) {
-      ++raw_distance_to_preimage;
-      distance_to_preimage += amount_from_this_step+1;
+  //repeat the same thing for the ones
+  std::vector<Bitword> interior_ones(0);
+  Bitword initial_ones_1 = word_boundary[ones_position];
+  Bitword initial_ones_2 = word_boundary[(ones_position+1)%word_boundary.size()];
+  Bitword final_ones_1 = word_boundary[word_boundary.size()-2];
+  Bitword final_ones_2 = word_boundary[word_boundary.size()-1];
+  //swap the first bit so it's easy
+  initial_ones_1.reverse_set(0,0); initial_ones_2.reverse_set(0,0);
+  final_ones_1.reverse_set(0,0); final_ones_2.reverse_set(0,0);
+  for (int i=0; i<M; ++i) {
+    if (zero_word_boundary[i] == final_ones_1 &&
+        zero_word_boundary[(i+1)%M] == final_ones_2) {
+      for (int j=2; j<M; ++j) {
+        if (zero_word_boundary[(i+j)%M] == initial_ones_1 &&
+            zero_word_boundary[(i+j+1)%M] == initial_ones_2) break;
+        interior_ones.push_back(zero_word_boundary[(i+j)%M]);
+        interior_ones.back().reverse_set(0,1);
+      }
+      break;
     }
-    ++raw_distance_around;
-    distance_completely_around += amount_from_this_step+1;
   }
+  
   
   if (verbose>0) {
-    std::cout << "Maximal insertion amount: " << maximal_insertion_amount << "\n";
-    std::cout << "Raw distance to preimage: " << raw_distance_to_preimage << "\n";
-    std::cout << "Distance to preimage: " << distance_to_preimage << "\n";
-    std::cout << "Raw distance around: " << raw_distance_around << "\n";
-    std::cout << "Distance completely around: " << distance_completely_around << "\n";
+    std::cout << "Initial ones: " << initial_ones_1 << " " << initial_ones_2 << "\n";
+    std::cout << "Final ones: " << final_ones_1 << " " << final_ones_2 << "\n";
+    std::cout << "Interior ones:\n";
+    for (int i=0; i<(int)interior_ones.size(); ++i) {
+      std::cout << i << ": " << interior_ones[i] << "\n";
+    }
   }
   
-  *theta = distance_to_preimage / distance_completely_around;
   return true;
 }
-  
-
-
-
 
 
 

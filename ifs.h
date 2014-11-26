@@ -98,6 +98,7 @@ struct Bitword {
   Bitword suffix(int n) const;
   std::string str() const;
   int reverse_get(int n) const;
+  void reverse_set(int n, int b);
   cpx apply(cpx z, cpx x) const;
   Bitword pow(int n) const;
   Bitword append(int n, int L) const;
@@ -186,6 +187,13 @@ class ifs{
     //IFS coordinate computation
     bool compute_coordinates(double* theta, double* lambda, int n_depth);
     bool compute_new_theta(double* theta, int n_depth);
+    bool compute_boundary_and_f_boundary(std::vector<Bitword>& whole_boundary, 
+                                         std::vector<Bitword>& f_boundary,
+                                         int n_depth,
+                                         int verbose);
+    bool compute_boundary_space(std::vector<Bitword>& X, 
+                                std::vector<std::pair<int, int> >& lamination,
+                                int n_depth);
     
     
     //mandelbrot mode
