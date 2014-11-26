@@ -1636,6 +1636,49 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
     }
   }
   
+  //the cut level gives the index at which we are cutting
+  int cut_level = 0; 
+  
+  //for the first cut, it's easy; we 
+  //can just get the 0's and 1's
+  std::vector<std::vector<Bitword> > chunks(2);
+  chunks[0] = interior_zeros;
+  chunks[0].insert(chunks[0].end(), 
+                   word_boundary.begin(), 
+                   word_boundary.begin() + ones_position);
+  chunks[1] = interior_ones;
+  chunks[1].insert(chunks[1].end(),
+                   word_boundary.begin() + ones_position,
+                   word_boundary.end());
+  
+  while (cut_level < n_depth) {
+    int j=0; //the list inside which we are looking
+    int first_cut_index = -1;
+    int second_cut_index = -1;
+    int M = (int)chunks[j].size();
+    for (int i=0; i<M; ++i) {
+      //find where to cut
+      if (chunks[j][i].reverse_get(cut_level) != 
+          chunks[j][(i+1)%M].reverse_get(cut_level)) {
+        if (first_cut_index == -1) {
+          first_cut_index = i;
+        } else {
+          second_cut_index = i;
+          break;
+        }
+      }
+      //if the second cut index is -1, then we didn't find enough to cut
+      if (second_cut_index == -1) break;
+      
+      //TODO
+    }
+    ++j; //it's always correct to just increase the index
+    if (j == (int)chunks.size()) {
+      j = 0;
+      ++cut_level;
+    }
+  }
+  
   return true;
 }
 
