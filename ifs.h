@@ -97,6 +97,7 @@ struct Bitword {
   Bitword prefix(int n) const;
   Bitword suffix(int n) const;
   std::string str() const;
+  Bitword shift_right(int n, int padding) const;
   int reverse_get(int n) const;
   void reverse_set(int n, int b);
   cpx apply(cpx z, cpx x) const;
@@ -104,6 +105,7 @@ struct Bitword {
   Bitword append(int n, int L) const;
   bool operator==(const Bitword& b) const;
   bool operator!=(const Bitword& b) const;
+  void copy_prefix(const Bitword& b, int n);
 };
 
 std::ostream& operator<<(std::ostream& os, const Bitword& b);
@@ -193,7 +195,8 @@ class ifs{
                                          int verbose);
     bool compute_boundary_space(std::vector<Bitword>& X, 
                                 std::vector<std::pair<int, int> >& lamination,
-                                int n_depth);
+                                int n_depth,
+                                int lam_depth);
     
     
     //mandelbrot mode

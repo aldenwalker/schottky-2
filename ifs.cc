@@ -123,9 +123,21 @@ Bitword Bitword::suffix(int n) const {
   return Bitword(b, n);
 }
 
+Bitword Bitword::shift_right(int n, int padding) const {
+  if (padding == 0) {
+    return Bitword( w>>n, len );
+  } else {
+    Bitword ans(w>>n, len);
+    for (int i=0; i<n; ++i) {
+      ans.reverse_set(i, padding);
+    }
+    return ans;
+  }
+}
+
 int Bitword::common_prefix(const Bitword& b) const {
   int p = 0;
-  while (reverse_get(p) != b.reverse_get(p)) ++p;
+  while (reverse_get(p) == b.reverse_get(p)) ++p;
   return p;
 }
   
@@ -190,6 +202,13 @@ bool Bitword::operator==(const Bitword& b) const {
 
 bool Bitword::operator!=(const Bitword& b) const {
   return str() != b.str();
+}
+
+
+void Bitword::copy_prefix(const Bitword& b, int n) {
+  for (int i=0; i<n; ++i) {
+    reverse_set(i, b.reverse_get(i));
+  }
 }
 
 
@@ -1546,7 +1565,8 @@ bool ifs::compute_boundary_and_f_boundary(std::vector<Bitword>& whole_boundary,
 
 bool ifs::compute_boundary_space(std::vector<Bitword>& X, 
                                  std::vector<std::pair<int, int> >& lamination,
-                                 int n_depth) {
+                                 int n_depth,
+                                 int lam_depth) {
   int verbose = 1;
   
   std::vector<Bitword> word_boundary;
@@ -1636,48 +1656,132 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
     }
   }
   
-  //the cut level gives the index at which we are cutting
-  int cut_level = 0; 
   
-  //for the first cut, it's easy; we 
-  //can just get the 0's and 1's
-  std::vector<std::vector<Bitword> > chunks(2);
-  chunks[0] = interior_zeros;
-  chunks[0].insert(chunks[0].end(), 
-                   word_boundary.begin(), 
-                   word_boundary.begin() + ones_position);
-  chunks[1] = interior_ones;
-  chunks[1].insert(chunks[1].end(),
-                   word_boundary.begin() + ones_position,
-                   word_boundary.end());
-  
-  while (cut_level < n_depth) {
-    int j=0; //the list inside which we are looking
-    int first_cut_index = -1;
-    int second_cut_index = -1;
-    int M = (int)chunks[j].size();
-    for (int i=0; i<M; ++i) {
-      //find where to cut
-      if (chunks[j][i].reverse_get(cut_level) != 
-          chunks[j][(i+1)%M].reverse_get(cut_level)) {
-        if (first_cut_index == -1) {
-          first_cut_index = i;
-        } else {
-          second_cut_index = i;
-          break;
-        }
+  std::vector<std::vector<Bitword> > level_interior_zeros(lam_depth);
+  std::vector<std::vector<Bitword> > level_interior_ones(lam_depth);
+  level_interior_zeros[0] = interior_zeros;
+  level_interior_ones[0] = interior_ones;
+  for (int i=1; i<lam_depth; ++i) {
+    level_interior_zeros[i].resize(1);
+    level_interior_zeros[i][0] = interior_zeros[0].shift_right(i, 0);
+    for (int j=1; j<(int)interior_zeros.size(); ++j) {
+      Bitword next = interior_zeros[j].shift_right(i, 0);
+      if (next != level_interior_zeros[i].back()) {
+        level_interior_zeros[i].push_back(next);
       }
-      //if the second cut index is -1, then we didn't find enough to cut
-      if (second_cut_index == -1) break;
-      
-      //TODO
     }
-    ++j; //it's always correct to just increase the index
-    if (j == (int)chunks.size()) {
-      j = 0;
-      ++cut_level;
+    
+    level_interior_ones[i].resize(1);
+    level_interior_ones[i][0] = interior_ones[0].shift_right(i, 1);
+    for (int j=1; j<(int)interior_ones.size(); ++j) {
+      Bitword next = interior_ones[j].shift_right(i, 1);
+      if (next != level_interior_ones[i].back()) {
+        level_interior_ones[i].push_back(next);
+      }
     }
   }
+  
+  if (verbose>0) {
+    for (int i=1; i<lam_depth; ++i) {
+      std::cout << "level " << i << " interior zeros:\n";
+      for (int j=0; j<(int)level_interior_zeros[i].size(); ++j) {
+        std::cout << j << ": " << level_interior_zeros[i][j] << "\n";
+      }
+      std::cout << "level " << i << " interior ones:\n";
+      for (int j=0; j<(int)level_interior_ones[i].size(); ++j) {
+        std::cout << j << ": " << level_interior_ones[i][j] << "\n";
+      }
+    }
+  }
+  
+  //create the boundary
+  std::vector<Bitword> boundary = word_boundary;
+  std::set<Bitword> boundary_set(word_boundary.begin(), word_boundary.end());
+  
+  //and the lamination
+  std::vector<std::pair<int,int> > temp_lam(0);
+  
+  for (int cut_level=0; cut_level < lam_depth; ++cut_level) {
+    
+    if (verbose>0) {
+      std::cout << "Boundary before cutting at level " << cut_level << ":\n";
+      for (int i=0; i<(int)boundary.size(); ++i) {
+        std::cout << i << ": " << boundary[i] << "\n";
+      }
+      std::cout << "Lamination: ";
+      for (int i=0; i<(int)temp_lam.size(); ++i) {
+        std::cout << "(" << temp_lam[i].first << "," << temp_lam[i].second << ")";
+      }
+      std::cout << "\n";
+    }    
+    
+    //find all the places in the boundary where 
+    //the highest swap place is at level cut_level
+    M = (int)boundary.size();
+    std::vector<int> swaps(0);
+    if (boundary.back().common_prefix(boundary[0]) == cut_level) {
+      swaps.push_back(0);
+    }
+    for (int i=0; i<(int)boundary.size()-1; ++i) {
+      if (boundary[i].common_prefix(boundary[i+1]) == cut_level) {
+        swaps.push_back(i+1);
+      }
+    }
+    
+    if (verbose>0) {
+      std::cout << "Swaps: ";
+      for (int i=0; i<(int)swaps.size(); ++i) {
+        std::cout << swaps[i] << " ";
+      }
+      std::cout << "\n";
+    }
+    
+    //go *backward* through the swaps so that we don't screw up the indices
+    for (int i=(int)swaps.size()-1; i>=0; --i) {
+      std::vector<Bitword> list_to_insert;
+      if (boundary[swaps[i]].reverse_get(cut_level) == 0) {
+        list_to_insert = level_interior_zeros[cut_level];
+      } else {
+        list_to_insert = level_interior_ones[cut_level];
+      }
+      for (int j=0; j<(int)list_to_insert.size(); ++j) {
+        list_to_insert[j].copy_prefix(boundary[swaps[i]], cut_level);
+      }
+      std::vector<Bitword> trimmed_list_to_insert(0);
+      for (int j=0; j<(int)list_to_insert.size(); ++j) {
+        if ( boundary_set.find(list_to_insert[j]) == boundary_set.end() ) {
+          trimmed_list_to_insert.push_back(list_to_insert[j]);
+          boundary_set.insert(list_to_insert[j]);
+        }
+      }
+      int i_size = trimmed_list_to_insert.size();
+      
+      boundary.insert(boundary.begin() + swaps[i], trimmed_list_to_insert.begin(), trimmed_list_to_insert.end());
+      for (int j=0; j<(int)temp_lam.size(); ++j) {
+        if (temp_lam[j].first >= swaps[i]) temp_lam[j].first += i_size;
+        if (temp_lam[j].second >= swaps[i]) temp_lam[j].second += i_size;
+      }
+      //note that swaps[i] now points to where the list starts
+      //let's keep the higher swaps correct
+      for (int j=i+1; j<(int)swaps.size(); ++j) {
+        swaps[j] += i_size;
+      }
+    }
+    
+    //now add in the new leaves; we add a leaf whenever they have the same 
+    //prefix of *length* cut_level
+    for (int i=0; i<(int)swaps.size(); ++i) {
+      for (int j=i+1; j<(int)swaps.size(); ++j) {
+        if (boundary[swaps[i]].common_prefix(boundary[swaps[j]]) == cut_level) {
+          temp_lam.push_back(std::make_pair(swaps[i], swaps[j]));
+        }
+      }
+    }
+      
+  }
+  
+  X = boundary;
+  lamination = temp_lam;
   
   return true;
 }
