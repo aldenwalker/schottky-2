@@ -2256,7 +2256,7 @@ void IFSGui::recompute_point_data() {
     T.str("");
     T << "Theta: " << point_coordinates_theta << " Lambda: " << point_coordinates_lambda;
     std::vector<Bitword> X;
-    std::vector<std::pair<int,int> > lam;
+    std::vector<Point3d<int> > lam;
     (void)IFS.compute_boundary_space(X, lam, point_coordinates_depth, point_coordinates_depth-4);
     std::cout << "Boundary space: ";
     for (int i=0; i<(int)X.size(); ++i) {
@@ -2264,7 +2264,7 @@ void IFSGui::recompute_point_data() {
     }
     std::cout << "Lamination: ";
     for (int i=0; i<(int)lam.size(); ++i) {
-      std::cout << "{" << lam[i].first << "," << lam[i].second << "},";
+      std::cout << "{" << lam[i].x << "," << lam[i].y << "," << lam[i].z << "},";
     }
     std::cout << "\n";
   }

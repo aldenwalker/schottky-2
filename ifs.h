@@ -194,7 +194,7 @@ class ifs{
                                          int n_depth,
                                          int verbose);
     bool compute_boundary_space(std::vector<Bitword>& X, 
-                                std::vector<std::pair<int, int> >& lamination,
+                                std::vector<Point3d<int> >& lamination,
                                 int n_depth,
                                 int lam_depth);
     

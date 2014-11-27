@@ -1564,7 +1564,7 @@ bool ifs::compute_boundary_and_f_boundary(std::vector<Bitword>& whole_boundary,
 
 
 bool ifs::compute_boundary_space(std::vector<Bitword>& X, 
-                                 std::vector<std::pair<int, int> >& lamination,
+                                 std::vector<Point3d<int> >& lamination,
                                  int n_depth,
                                  int lam_depth) {
   int verbose = 1;
@@ -1699,7 +1699,7 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
   std::set<Bitword> boundary_set(word_boundary.begin(), word_boundary.end());
   
   //and the lamination
-  std::vector<std::pair<int,int> > temp_lam(0);
+  std::vector<Point3d<int> > temp_lam(0);
   
   for (int cut_level=0; cut_level < lam_depth; ++cut_level) {
     
@@ -1710,7 +1710,7 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
       }
       std::cout << "Lamination: ";
       for (int i=0; i<(int)temp_lam.size(); ++i) {
-        std::cout << "(" << temp_lam[i].first << "," << temp_lam[i].second << ")";
+        std::cout << "(" << temp_lam[i].x << "," << temp_lam[i].y << "," << temp_lam[i].z << ")";
       }
       std::cout << "\n";
     }    
@@ -1758,8 +1758,8 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
       
       boundary.insert(boundary.begin() + swaps[i], trimmed_list_to_insert.begin(), trimmed_list_to_insert.end());
       for (int j=0; j<(int)temp_lam.size(); ++j) {
-        if (temp_lam[j].first >= swaps[i]) temp_lam[j].first += i_size;
-        if (temp_lam[j].second >= swaps[i]) temp_lam[j].second += i_size;
+        if (temp_lam[j].x >= swaps[i]) temp_lam[j].x += i_size;
+        if (temp_lam[j].y >= swaps[i]) temp_lam[j].y += i_size;
       }
       //note that swaps[i] now points to where the list starts
       //let's keep the higher swaps correct
@@ -1773,7 +1773,7 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
     for (int i=0; i<(int)swaps.size(); ++i) {
       for (int j=i+1; j<(int)swaps.size(); ++j) {
         if (boundary[swaps[i]].common_prefix(boundary[swaps[j]]) == cut_level) {
-          temp_lam.push_back(std::make_pair(swaps[i], swaps[j]));
+          temp_lam.push_back(Point3d<int>(swaps[i], swaps[j], cut_level));
         }
       }
     }
