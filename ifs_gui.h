@@ -294,6 +294,7 @@ struct IFSGui {
   WidgetCheck W_limit_nifs;
   WidgetCheck W_limit_gifs;
   WidgetCheck W_limit_2d;
+  WidgetButton W_limit_write_boundary;
   
   
   WidgetDraw W_mand_plot;
@@ -391,6 +392,7 @@ struct IFSGui {
   void S_limit_nifs(XEvent* e);
   void S_limit_gifs(XEvent* e);
   void S_limit_2d(XEvent* e);
+  void S_limit_write_boundary(XEvent* e);
   
   void S_mand_draw(XEvent* e);
   void S_mand_recenter(XEvent* e);

@@ -1452,6 +1452,14 @@ bool ifs::compute_boundary_and_f_boundary(std::vector<Bitword>& whole_boundary,
     //std::cout << i << ": " << unreduced_word_boundary[i] << "\n";
   }
   
+  if (verbose>0) {
+    std::cout << "Unreduced word boundary:\n";
+    for (int i=0; i<(int)unreduced_word_boundary.size(); ++i) {
+      std::cout << i << ": " << unreduced_word_boundary[i] << "\n";
+    }
+    std::cout << "\n";
+  }
+  
   //reduce the boundary
   //this rotates the boundary so that it starts with a 0
   //and then removes any duplicates (which are next to each other)
@@ -1567,7 +1575,7 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
                                  std::vector<Point3d<int> >& lamination,
                                  int n_depth,
                                  int lam_depth) {
-  int verbose = 1;
+  int verbose = 0;
   
   std::vector<Bitword> word_boundary;
   std::vector<Bitword> zero_word_boundary;
@@ -1575,7 +1583,7 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
   if (!compute_boundary_and_f_boundary(word_boundary, 
                                        zero_word_boundary, 
                                        n_depth,
-                                       0)) {
+                                       verbose)) {
     return false;
   }
   
@@ -1585,8 +1593,8 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
       std::cout << i << ": " << word_boundary[i] << "\n";
     }
     std::cout << "Zero boundary: \n";
-    for (int i=0; i<(int)word_boundary.size(); ++i) {
-      std::cout << i << ": " << word_boundary[i] << "\n";
+    for (int i=0; i<(int)zero_word_boundary.size(); ++i) {
+      std::cout << i << ": " << zero_word_boundary[i] << "\n";
     }
   }
   

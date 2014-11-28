@@ -495,6 +495,32 @@ void IFSGui::S_limit_2d(XEvent* e) {
   draw_limit();
 }
 
+
+void IFSGui::S_limit_write_boundary(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  std::vector<Bitword> boundary;
+  std::vector<Bitword> f_boundary;
+  IFS.compute_boundary_and_f_boundary(boundary, f_boundary, limit_depth, 0);
+  std::vector<cpx> cbd(boundary.size());
+  for (int i=0; i<(int)boundary.size(); ++i) {
+    cbd[i] = IFS.apply_bitword(boundary[i], 0.5);
+  }
+  std::cout << boundary.size() << " points:\n";
+  for (int i=0; i<(int)cbd.size(); ++i) {
+    std::cout << cbd[i].real() << " " << cbd[i].imag() << " ";
+  }
+  std::cout << "\n";
+}
+
+
+
+
+
+
+
+
+
+
 //mandelbrot
 void IFSGui::S_mand_draw(XEvent* e) {
   if (e->type == KeyPress) return;
@@ -2589,6 +2615,7 @@ void IFSGui::reset_and_pack_window() {
     W_limit_nifs = WidgetCheck(this, "nIFS", -1, 20, limit_nifs, &IFSGui::S_limit_nifs);
     W_limit_gifs = WidgetCheck(this, "gIFS", -1, 20, limit_gifs, &IFSGui::S_limit_gifs);
     W_limit_2d = WidgetCheck(this, "2d IFS", -1, 20, limit_2d, &IFSGui::S_limit_2d);
+    W_limit_write_boundary = WidgetButton(this, "Write boundary", -1, 20, &IFSGui::S_limit_write_boundary);
     
     pack_widget_upper_right(NULL, &W_limit_plot);
     if (window_mode == LIMIT) {
@@ -2614,6 +2641,7 @@ void IFSGui::reset_and_pack_window() {
     pack_widget_upper_right(&W_limit_plot, &W_limit_nifs);
     pack_widget_upper_right(&W_limit_plot, &W_limit_gifs);
     pack_widget_upper_right(&W_limit_plot, &W_limit_2d);
+    pack_widget_upper_right(&W_limit_plot, &W_limit_write_boundary);
     
   }
   
