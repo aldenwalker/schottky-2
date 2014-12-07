@@ -127,6 +127,8 @@ Bitword Bitword::shift_right(int n, int padding) const {
   if (padding == 0) {
     return Bitword( w>>n, len );
   } else {
+    std::cout << "Shifting " << *this << " to the right by " << n << "\n";
+    std::cout.flush();
     Bitword ans(w>>n, len);
     for (int i=0; i<n; ++i) {
       ans.reverse_set(i, padding);
@@ -1589,8 +1591,7 @@ bool ifs::compute_boundary_and_f_boundary(std::vector<Bitword>& whole_boundary,
 
 
 
-bool ifs::compute_boundary_space(std::vector<Bitword>& X, 
-                                 std::vector<Point3d<int> >& lamination,
+bool ifs::compute_boundary_space(BoundarySpace& BS,
                                  int n_depth,
                                  int lam_depth) {
   int verbose = 0;
@@ -1616,9 +1617,6 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
     }
   }
   
-  //we're going to assume that the boundary of gL is exactly the 
-  //same as the boundary of fL except all the words start with 1
-  
   //find the interval in the zero boundary which lies on the 
   //inside of the circle
   std::vector<Bitword> interior_zeros(0);
@@ -1642,6 +1640,7 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
   }
   
   if (verbose>0) {
+    std::cout << "Ones position: " << ones_position << "\n";
     std::cout << "Initial zeros: " << initial_zeros_1 << " " << initial_zeros_2 << "\n";
     std::cout << "Final zeros: " << final_zeros_1 << " " << final_zeros_2 << "\n";
     std::cout << "Interior zeros:\n";
@@ -1672,9 +1671,12 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
     }
   }
   
+  if (interior_ones.size() == 0) { //we were unlucky and didn't find the 1's boundary
+    return false;
+  }
   
   if (verbose>0) {
-    std::cout << "Initial ones: " << initial_ones_1 << " " << initial_ones_2 << "\n";
+    std::cout << "Initial ones (first digit swapped): " << initial_ones_1 << " " << initial_ones_2 << "\n";
     std::cout << "Final ones: " << final_ones_1 << " " << final_ones_2 << "\n";
     std::cout << "Interior ones:\n";
     for (int i=0; i<(int)interior_ones.size(); ++i) {
@@ -1721,35 +1723,37 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
   }
   
   //create the boundary
-  std::vector<Bitword> boundary = word_boundary;
-  std::set<Bitword> boundary_set(word_boundary.begin(), word_boundary.end());
+  BS.cut_depth = n_depth;
+  BS.lam_depth = lam_depth;
+  BS.boundary = word_boundary;
+  BS.b_word_depth = std::vector<int>(word_boundary.size(), 0);
+  BS.lam.resize(0);
   
-  //and the lamination
-  std::vector<Point3d<int> > temp_lam(0);
+  std::set<Bitword> boundary_set(word_boundary.begin(), word_boundary.end());
   
   for (int cut_level=0; cut_level < lam_depth; ++cut_level) {
     
     if (verbose>0) {
       std::cout << "Boundary before cutting at level " << cut_level << ":\n";
-      for (int i=0; i<(int)boundary.size(); ++i) {
-        std::cout << i << ": " << boundary[i] << "\n";
+      for (int i=0; i<(int)BS.boundary.size(); ++i) {
+        std::cout << i << ": " << BS.boundary[i] << "\n";
       }
       std::cout << "Lamination: ";
-      for (int i=0; i<(int)temp_lam.size(); ++i) {
-        std::cout << "(" << temp_lam[i].x << "," << temp_lam[i].y << "," << temp_lam[i].z << ")";
+      for (int i=0; i<(int)BS.lam.size(); ++i) {
+        std::cout << "(" << BS.lam[i].x << "," << BS.lam[i].y << "," << BS.lam[i].z << ")";
       }
       std::cout << "\n";
     }    
     
     //find all the places in the boundary where 
     //the highest swap place is at level cut_level
-    M = (int)boundary.size();
+    M = (int)BS.boundary.size();
     std::vector<int> swaps(0);
-    if (boundary.back().common_prefix(boundary[0]) == cut_level) {
+    if (BS.boundary.back().common_prefix(BS.boundary[0]) == cut_level) {
       swaps.push_back(0);
     }
-    for (int i=0; i<(int)boundary.size()-1; ++i) {
-      if (boundary[i].common_prefix(boundary[i+1]) == cut_level) {
+    for (int i=0; i<(int)BS.boundary.size()-1; ++i) {
+      if (BS.boundary[i].common_prefix(BS.boundary[i+1]) == cut_level) {
         swaps.push_back(i+1);
       }
     }
@@ -1765,13 +1769,13 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
     //go *backward* through the swaps so that we don't screw up the indices
     for (int i=(int)swaps.size()-1; i>=0; --i) {
       std::vector<Bitword> list_to_insert;
-      if (boundary[swaps[i]].reverse_get(cut_level) == 0) {
+      if (BS.boundary[swaps[i]].reverse_get(cut_level) == 0) {
         list_to_insert = level_interior_zeros[cut_level];
       } else {
         list_to_insert = level_interior_ones[cut_level];
       }
       for (int j=0; j<(int)list_to_insert.size(); ++j) {
-        list_to_insert[j].copy_prefix(boundary[swaps[i]], cut_level);
+        list_to_insert[j].copy_prefix(BS.boundary[swaps[i]], cut_level);
       }
       std::vector<Bitword> trimmed_list_to_insert(0);
       for (int j=0; j<(int)list_to_insert.size(); ++j) {
@@ -1782,10 +1786,14 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
       }
       int i_size = trimmed_list_to_insert.size();
       
-      boundary.insert(boundary.begin() + swaps[i], trimmed_list_to_insert.begin(), trimmed_list_to_insert.end());
-      for (int j=0; j<(int)temp_lam.size(); ++j) {
-        if (temp_lam[j].x >= swaps[i]) temp_lam[j].x += i_size;
-        if (temp_lam[j].y >= swaps[i]) temp_lam[j].y += i_size;
+      BS.boundary.insert(BS.boundary.begin() + swaps[i], 
+                         trimmed_list_to_insert.begin(), 
+                         trimmed_list_to_insert.end());
+      BS.b_word_depth.insert(BS.b_word_depth.begin() + swaps[i],
+                             i_size, cut_level+1);
+      for (int j=0; j<(int)BS.lam.size(); ++j) {
+        if (BS.lam[j].x >= swaps[i]) BS.lam[j].x += i_size;
+        if (BS.lam[j].y >= swaps[i]) BS.lam[j].y += i_size;
       }
       //note that swaps[i] now points to where the list starts
       //let's keep the higher swaps correct
@@ -1798,16 +1806,13 @@ bool ifs::compute_boundary_space(std::vector<Bitword>& X,
     //prefix of *length* cut_level
     for (int i=0; i<(int)swaps.size(); ++i) {
       for (int j=i+1; j<(int)swaps.size(); ++j) {
-        if (boundary[swaps[i]].common_prefix(boundary[swaps[j]]) == cut_level) {
-          temp_lam.push_back(Point3d<int>(swaps[i], swaps[j], cut_level));
+        if (BS.boundary[swaps[i]].common_prefix(BS.boundary[swaps[j]]) == cut_level) {
+          BS.lam.push_back(Point3d<int>(swaps[i], swaps[j], cut_level));
         }
       }
     }
       
   }
-  
-  X = boundary;
-  lamination = temp_lam;
   
   return true;
 }

@@ -2281,18 +2281,26 @@ void IFSGui::recompute_point_data() {
     (void)IFS.compute_new_theta(&point_coordinates_theta, point_coordinates_depth);
     T.str("");
     T << "Theta: " << point_coordinates_theta << " Lambda: " << point_coordinates_lambda;
-    std::vector<Bitword> X;
-    std::vector<Point3d<int> > lam;
-    (void)IFS.compute_boundary_space(X, lam, point_coordinates_depth, point_coordinates_depth-4);
+    BoundarySpace BS;
+    (void)IFS.compute_boundary_space(BS, point_coordinates_depth, point_coordinates_depth-4);
     std::cout << "Boundary space: ";
-    for (int i=0; i<(int)X.size(); ++i) {
-      std::cout << i << ": " << X[i] << "\n";
+    for (int i=0; i<(int)BS.boundary.size(); ++i) {
+      std::cout << i << ": " << BS.boundary[i] << "\n";
     }
     std::cout << "Lamination: ";
-    for (int i=0; i<(int)lam.size(); ++i) {
-      std::cout << "{" << lam[i].x << "," << lam[i].y << "," << lam[i].z << "},";
+    for (int i=0; i<(int)BS.lam.size(); ++i) {
+      std::cout << "{" << BS.lam[i].x << "," << BS.lam[i].y << "," << BS.lam[i].z << "},";
     }
     std::cout << "\n";
+    BS.create_contracted_lam();
+    std::cout << "Contracted circle has " << BS.contracted_boundary.size() << " elements\n";
+    std::cout << "Contracted lamination: \n";
+    for (int i=0; i<(int)BS.contracted_lam.size(); ++i) {
+      std::cout << "{" << BS.contracted_lam[i].x << "," << 
+                          BS.contracted_lam[i].y << "," << 
+                          BS.contracted_lam[i].z << "},";
+    }
+    std::cout.flush();
   }
   W_point_coordinates_status.update_text(T.str());
 }
