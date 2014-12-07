@@ -823,6 +823,24 @@ void ifs::compute_uv_graph(std::vector<Point3d<int> >& uv_graph,
   
 
 
+void ifs::intersection_prefixes(std::vector<std::pair<Bitword,Bitword> >& i_pairs, 
+                                int depth,
+                                int verbose) {
+  
+  double min_r;
+  if (!minimal_enclosing_radius(min_r)) return;
+  Ball b(0.5,(z-1.0)/2.0,(1.0-w)/2.0,1.01*min_r);
+  std::vector<std::pair<Ball, Ball> > pairs(1);
+  std::vector<std::pair<Ball, Ball> > next_pairs;
+  pairs[0] = std::make_pair(act_on_right(0,b), act_on_right(1,b));
+  i_pairs.resize(0);
+  if (verbose>0 && depth>0) {
+    i_pairs.resize(0);
+  }
+    
+}
+
+
 
 
 

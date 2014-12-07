@@ -172,6 +172,10 @@ class ifs{
                     int first_depth, int second_depth);
     std::vector<int> coefficient_list(const Bitword& u); 
     void word_deriv(const Bitword& u, const cpx& z0, cpx& deriv, double& err);
+    void intersection_prefixes(std::vector<std::pair<Bitword,Bitword> >& i_pairs, 
+                               int depth,
+                               int verbose);
+    
     
     
     //IFS drawing
@@ -197,6 +201,7 @@ class ifs{
                                 std::vector<Point3d<int> >& lamination,
                                 int n_depth,
                                 int lam_depth);
+    
     
     
     //mandelbrot mode
