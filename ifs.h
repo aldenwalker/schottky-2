@@ -122,30 +122,8 @@ struct BoundarySpace {
   std::vector<int> b_word_depth; //the depth at which this boundary part lies
   std::vector<Point3d<int> > lam; //(x,y,depth), where x,y are indices in the boundary
   std::vector<Point3d<int> > contracted_lam;
-  void create_contracted_lam() {
-    contracted_boundary.resize(0);
-    contracted_lam.resize(0);
-    std::vector<int> bd_to_cb(boundary.size());
-    for (int i=0; i<(int)boundary.size(); ++i) {
-      if (b_word_depth[i] == 0) {
-        bd_to_cb[i] = contracted_boundary.size();
-        contracted_boundary.push_back(boundary[i]);
-      } else {
-        bd_to_cb[i] = -1;
-      }
-    }
-    int bl = boundary.size();
-    for (int i=0; i<(int)lam.size(); ++i) {
-      int new_p1 = lam[i].x;
-      while (b_word_depth[new_p1] > 0) new_p1 = (new_p1+1)%bl;
-      int new_p2 = lam[i].y;
-      while (b_word_depth[new_p2] > 0) new_p2 = (new_p2+1)%bl;
-      if (new_p1 != new_p2) {
-        contracted_lam.push_back( Point3d<int>(bd_to_cb[new_p1], bd_to_cb[new_p2], lam[i].z) );
-      }
-    }
-  }
-  
+  std::vector<Point3d<int> > outside_lam;
+  void create_contracted_and_outside_lam();
 };
 
 //std::ostream& operator<<(std::ostream& os, const BoundarySpace& b) {

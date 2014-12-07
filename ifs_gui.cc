@@ -2292,7 +2292,7 @@ void IFSGui::recompute_point_data() {
       std::cout << "{" << BS.lam[i].x << "," << BS.lam[i].y << "," << BS.lam[i].z << "},";
     }
     std::cout << "\n";
-    BS.create_contracted_lam();
+    BS.create_contracted_and_outside_lam();
     std::cout << "Contracted circle has " << BS.contracted_boundary.size() << " elements\n";
     std::cout << "Contracted lamination: \n";
     for (int i=0; i<(int)BS.contracted_lam.size(); ++i) {
@@ -2300,7 +2300,13 @@ void IFSGui::recompute_point_data() {
                           BS.contracted_lam[i].y << "," << 
                           BS.contracted_lam[i].z << "},";
     }
-    std::cout.flush();
+    std::cout << "\nOutside lamination: \n";
+    for (int i=0; i<(int)BS.outside_lam.size(); ++i) {
+      std::cout << "{" << BS.outside_lam[i].x << "," << 
+                          BS.outside_lam[i].y << "," << 
+                          BS.outside_lam[i].z << "},";
+    }
+    std::cout << "\n";
   }
   W_point_coordinates_status.update_text(T.str());
 }

@@ -214,6 +214,73 @@ void Bitword::copy_prefix(const Bitword& b, int n) {
 }
 
 
+
+
+
+
+
+
+void BoundarySpace::create_contracted_and_outside_lam() {
+    contracted_boundary.resize(0);
+    contracted_lam.resize(0);
+    outside_lam.resize(0);
+    std::vector<int> bd_to_cb(boundary.size());
+    for (int i=0; i<(int)boundary.size(); ++i) {
+      if (b_word_depth[i] == 0) {
+        bd_to_cb[i] = contracted_boundary.size();
+        contracted_boundary.push_back(boundary[i]);
+      } else {
+        bd_to_cb[i] = -1;
+      }
+    }
+    int bl = boundary.size();
+    for (int i=0; i<(int)lam.size(); ++i) {
+      bool good_for_outside_1 = true;
+      int p1 = lam[i].x;
+      int new_p1 = p1;
+      while (b_word_depth[new_p1] > 0) {
+        if (b_word_depth[new_p1] < b_word_depth[p1]) good_for_outside_1 = false;
+        new_p1 = (new_p1+1)%bl;
+      }
+      bool good_for_outside_2 = true;
+      int p2 = lam[i].y;
+      int new_p2 = p2;
+      while (b_word_depth[new_p2] > 0) {
+        if (b_word_depth[new_p2] < b_word_depth[p2]) good_for_outside_2 = false;
+        new_p2 = (new_p2+1)%bl;
+      }
+      if (new_p1 != new_p2) {
+        Point3d<int> leaf(bd_to_cb[new_p1], bd_to_cb[new_p2], lam[i].z);
+        contracted_lam.push_back( leaf );
+        if (good_for_outside_1 && good_for_outside_2) {
+          outside_lam.push_back( leaf );
+        }
+      }
+    }
+  } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /****************  IFS functions ****************************/
 ifs::ifs() {
 }
