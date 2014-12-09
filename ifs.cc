@@ -235,18 +235,16 @@ void BoundarySpace::create_contracted_and_outside_lam() {
     }
     int bl = boundary.size();
     for (int i=0; i<(int)lam.size(); ++i) {
-      bool good_for_outside_1 = true;
       int p1 = lam[i].x;
+      bool good_for_outside_1 = (b_word_depth[(p1-1+bl)%bl] == 0);
       int new_p1 = p1;
       while (b_word_depth[new_p1] > 0) {
-        if (b_word_depth[new_p1] < b_word_depth[p1]) good_for_outside_1 = false;
         new_p1 = (new_p1+1)%bl;
       }
-      bool good_for_outside_2 = true;
       int p2 = lam[i].y;
+      bool good_for_outside_2 = (b_word_depth[(p2-1+bl)%bl] == 0);
       int new_p2 = p2;
       while (b_word_depth[new_p2] > 0) {
-        if (b_word_depth[new_p2] < b_word_depth[p2]) good_for_outside_2 = false;
         new_p2 = (new_p2+1)%bl;
       }
       if (new_p1 != new_p2) {
