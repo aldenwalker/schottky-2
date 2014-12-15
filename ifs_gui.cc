@@ -2320,18 +2320,24 @@ void IFSGui::find_coordinates_along_path(int verbose) {
     temp_IFS.set_params(path.path[i], path.path[i]);
     double t1, ell1;
     double t2, ell2;
-    //if (temp_IFS.compute_coordinates( &t1, &ell1, mand_theta_depth ) &&
-    //    temp_IFS.compute_coordinates( &t2, &ell2, mand_theta_depth+1) ) {
-    //  if (abs(t1) < 1 && abs(t2) < 1 && abs(ell1) < 3 && abs(ell2) < 3) {
-    //    path.coordinates.push_back( std::make_pair( 0.5*(t1+t2), 0.5*(ell1+ell2)) );
-    //  }
-    if (temp_IFS.compute_new_theta( &t1, mand_theta_depth )) {
-      path.coordinates.push_back( std::make_pair( t1, -1) );
+    if (temp_IFS.compute_coordinates( &t1, &ell1, mand_theta_depth ) &&
+        temp_IFS.compute_coordinates( &t2, &ell2, mand_theta_depth+1) ) {
+      if (abs(t1) < 1 && abs(t2) < 1 && abs(ell1) < 3 && abs(ell2) < 3) {
+        path.coordinates.push_back( std::make_pair( 0.5*(t1+t2), 0.5*(ell1+ell2)) );
+      }
     }
+    //if (temp_IFS.compute_new_theta( &t1, mand_theta_depth )) {
+    //  path.coordinates.push_back( std::make_pair( t1, -1) );
+    //}
   }
   for (int i=0; i<(int)path.coordinates.size(); ++i) {
-    std::cout << "{" << path.coordinates[i].first << "," << 
-                        path.coordinates[i].second << "},";
+    //std::cout << "{" << path.coordinates[i].first << "," << 
+    //                    path.coordinates[i].second << "},";
+    if (path.coordinates[i].first < 0) {
+      path.coordinates[i].first += 1;
+    }
+    path.coordinates[i].first *= 2*3.14159265358979323846;
+    std::cout << path.coordinates[i].second << " " << path.coordinates[i].first << "\n";
   }
   std::cout << "\n";
 }
