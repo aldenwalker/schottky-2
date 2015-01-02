@@ -226,6 +226,7 @@ struct IFSGui {
   void mand_draw_ball(const Ball& b, int col);
   void recompute_point_data();
   void find_traps_along_path(int verbose);
+  void find_traps_along_circle_in_window(int verbose);
   void find_coordinates_along_path(int verbose);
   
   //graphics stuff
@@ -341,6 +342,7 @@ struct IFSGui {
   WidgetLeftArrow W_mand_output_picture_size_leftarrow;
   WidgetText W_mand_output_picture_size_label;
   WidgetRightArrow W_mand_output_picture_size_rightarrow;
+  WidgetButton W_mand_find_circle_traps;
   
   WidgetText W_mand_path_drawing_title;
   WidgetButton W_mand_path_create_by_drawing_button;
@@ -423,6 +425,7 @@ struct IFSGui {
   void S_mand_output_picture(XEvent* e);
   void S_mand_output_picture_increase_size(XEvent* e);
   void S_mand_output_picture_decrease_size(XEvent* e);
+  void S_mand_find_circle_traps(XEvent* e);
   
   
   void S_point_connected(XEvent* e);

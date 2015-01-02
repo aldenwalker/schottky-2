@@ -10,6 +10,137 @@
 
 
 
+/***************************************************************************
+* some computation functions
+****************************************************************************/
+double dot(cpx a, cpx b) {
+  return a.real()*b.real() + a.imag()*b.imag();
+}
+
+//returns negative if there's no intersection
+void circle_intersect_segment(cpx c, double r, cpx p1, cpx p2, double& a1, double& a2) {
+  double PI = 3.14159265358979323846;
+  cpx base = p2 - p1;
+  cpx tocenter = c - p1;
+  double t = dot(base, tocenter) / dot(base, base);
+  cpx proj = p1 + t*base;
+  double d = abs(proj - c);
+  
+  std::cout << "Intersecting the circle " << c << " " << r << " with the segment " << p1 << " " << p1 << "\n";
+  
+  if (d > r) {
+    a1 = a2 = -1;
+    std::cout << "Can't possibly intersect\n";
+    return;
+  }
+  double along_base = sqrt(r*r - d*d);
+  double base_len = abs(base);
+  cpx base_scaled = base / base_len;
+  cpx int1 = proj + along_base*base_scaled;
+  cpx int2 = proj - along_base*base_scaled;
+  
+  std::cout << "got intersections " << int1 << " " << int2 << "\n";
+  
+  bool i1good = false;
+  bool i2good = false;
+  if (abs(int1 - p1) < base_len && abs(int1 - p2) < base_len) i1good = true;
+  if (abs(int2 - p2) < base_len && abs(int2 - p2) < base_len) i2good = true;
+  
+  std::cout << "Good intersections? " << i1good << " " << i2good << "\n";
+  
+  if (i1good && i2good) {
+    cpx d = int1 - c;
+    a1 = atan2(d.imag(), d.real());
+    if (a1 < 0) a1 += 2*PI;
+    d = int2 - c;
+    a2 = atan2(d.imag(), d.real());
+    if (a2 < 0) a2 += 2*PI;
+    if (a1 > a2) {
+      double temp = a2;
+      a2 = a1;
+      a1 = temp;
+    }
+  } else if (i1good) {
+    cpx d = int1 - c;
+    a1 = atan2(d.imag(), d.real());
+    if (a1 < 0) a1 += 2*PI;
+    a2 = -1;
+  } else if (i2good) {
+    cpx d = int2 - c;
+    a1 = atan2(d.imag(), d.real());
+    if (a1 < 0) a1 += 2*PI;
+    a2 = -1;
+  } else {
+    a1 = a2 = -1;
+  }
+}
+    
+    
+
+void circle_intersect_box(cpx box_ll, cpx box_ur, cpx center, double radius, double& a1, double& a2) {
+  double ta1,ta2;
+  a1 = a2 = -1;
+  std::vector<cpx> points(4);
+  points[0] = box_ll;
+  points[1] = cpx(box_ur.real(), box_ll.imag());
+  points[2] = box_ur;
+  points[3] = cpx(box_ll.real(), box_ur.imag());
+  int points_found = 0;
+  std::cout << "Intersecting the box " << box_ll << " " << box_ur << " with the circle " << center << " " << radius << "\n";
+  for (int i=0; i<4; i++) {
+    circle_intersect_segment(center, radius, points[i], points[(i+1)%4], ta1, ta2);
+    if (ta1 >= 0) {
+      if (points_found == 1) {
+        if (abs(ta1-a1) > 1e-12) {
+          a2 = ta1;
+          return;
+        }
+      } else {
+        a1 = ta1;
+        points_found = 1;
+      }
+    }
+    if (ta2 >= 0 && abs(ta2-a1)>1e-12) {
+      a2 = ta2;
+      return;
+    }
+  }
+  if (a1 < 0) {
+    double br = (box_ur.real()-box_ll.real())/2.0;
+    if (abs(center - ((box_ll+box_ur)/2.0)) < br) {
+      a1 = 0;
+      a2 = 2*3.14159265358979323846;
+    } else {
+      a1 = a2 = -1;
+    }
+  }
+}
+
+
+
+double maximal_intersection_angle(cpx c1, double r1, cpx c2, double r2) {
+  double d = abs(c2-c1);
+  if (d > r1+r2 || d < r2-r1 || d < r1-r2) return -1;
+  double alpha = acos((d*d + r1*r1 - r2*r2)/(2*d*r1));
+  double a = atan2( (c2-c1).imag(), (c2-c1).real() );
+  if (a < 0) a += 2*3.14159265358979323846;
+  return a + alpha;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -848,7 +979,10 @@ void IFSGui::S_mand_output_picture_decrease_size(XEvent* e) {
   W_mand_output_picture_size_label.update_text(T.str());
 }
   
-
+void IFSGui::S_mand_find_circle_traps(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  find_traps_along_circle_in_window(1);
+}
 
 
 
@@ -2088,10 +2222,16 @@ void IFSGui::draw_mand() {
         ++num_done;
         if (i == (int)path.half_words.size()) i = 0;
       } while (num_done < num_to_do);
-    }
-                                             
-                                             
+    }                                          
   }
+  
+  //draw the circle
+  int col = get_rgb_color(1,0,0);
+  XSetForeground(display, MW.gc, col);
+  Point2d<int> sqrt2_ul = mand_cpx_to_pixel(cpx(-1.0/sqrt(2.0), 1.0/sqrt(2.0)));
+  Point2d<int> sqrt2_lr = mand_cpx_to_pixel(cpx(1.0/sqrt(2.0),-1.0/sqrt(2.0)));
+  XDrawArc(display, MW.p, MW.gc, sqrt2_ul.x, sqrt2_ul.y, sqrt2_lr.x-sqrt2_ul.x, sqrt2_lr.y-sqrt2_ul.y, 360*64, 360*64);
+  
   
   MW.redraw();
 }
@@ -2424,6 +2564,115 @@ void IFSGui::find_traps_along_path(int verbose) {
 }
 
 
+void IFSGui::find_traps_along_circle_in_window(int verbose) {
+  double PI = 3.14159265358979323846;
+  std::cout.precision(8);
+  //We need to focus on small windows along the circle
+  //first, figure out where the window intersects the circle
+  double angle1, angle2;
+  circle_intersect_box(mand_ll, mand_ur, cpx(0,0), 1.0/sqrt(2.0), angle1, angle2);
+  if (angle1 > PI/2.0) {
+    std::cout << "Sorry, this function only works in the upper right quadrant\n";
+    return;
+  }
+  if (angle2 > PI/2.0) {
+    angle2 = PI/2.0;
+  }
+  if (verbose>0) {
+    std::cout << "Finding traps between angles " << angle1 << " and " << angle2 << "\n";
+  }
+  double current_angle = angle1;
+  cpx current_z;
+  
+  double max_box_diameter = 0.0001;
+  double min_box_diameter = 0.00001;
+  while (true) {
+    current_z = (1.0/sqrt(2.0))*cpx(cos(current_angle), sin(current_angle));
+    if (verbose>0) {
+      std::cout << "Finding TLB at angle " << current_angle << ", i.e. " << current_z << "\n";
+    }
+    std::vector<Ball> TLB;
+    ifs temp_IFS;
+    double TLB_C, TLB_Z;
+    bool found_TLB = false;
+    double final_angle_in_box;
+    
+    //***************  find a box and TLB in the box
+    
+    while (true) {
+      //the box should have sides maybe 0.0001?
+      //it's always ok to put the lower right corner of the box at our current angle
+      double box_diameter = max_box_diameter;
+      cpx box_ll(current_z.real() - box_diameter - 0.001*box_diameter, current_z.imag() - 0.001*box_diameter);
+      cpx box_ur(current_z.real() + 0.001*box_diameter, current_z.imag() + box_diameter + 0.001*box_diameter);
+      cpx box_middle = (box_ll + box_ur)/2.0;
+      if (verbose>1) {
+        std::cout << "Trying box: " << box_ll << " " << box_ur << "\n";
+        std::cout << "Diameter: " << box_diameter << "\n";
+      }
+      temp_IFS.set_params(box_middle, box_middle);
+      found_TLB = temp_IFS.TLB_for_region(TLB, box_ll, box_ur, 15, &TLB_C, &TLB_Z, 0);
+      if (found_TLB || box_diameter/2.0 < min_box_diameter) {
+        box_ll += 0.001*cpx(box_diameter,box_diameter);
+        box_ur -= 0.001*cpx(box_diameter,box_diameter);
+        double a;
+        circle_intersect_box(box_ll, box_ur, cpx(0.0), 1.0/sqrt(2.0), a, final_angle_in_box);
+        if (verbose>0) {
+          std::cout << "Box will be good; angles of intersection are: " << a << " " << final_angle_in_box << "\n";
+        }
+        break;
+      }
+      box_diameter /= 2.0;
+    }
+    if (!found_TLB) {
+      if (verbose>0) std::cout << "Couldn't find TLB; aborting\n";
+      return;
+    } else if (verbose>0) {
+      std::cout << "Found TLB; final angle is " << final_angle_in_box << "\n";
+    }
+    
+    //**************** find traps along the circle inside the box
+    double current_angle_in_box = current_angle;
+    while (true) {
+      cpx current_z_in_box = (1.0/sqrt(2.0))*cpx(cos(current_angle_in_box), sin(current_angle_in_box));
+      double epsilon;
+      int difficulty;
+      temp_IFS.set_params(current_z_in_box, current_z_in_box);
+      difficulty = temp_IFS.check_TLB(TLB, &TLB_C, &TLB_Z, epsilon, NULL, mand_trap_depth); 
+      if (difficulty < 0) {
+        if (verbose>0) {
+          std::cout << "Failed to find trap at angle " << current_angle_in_box << "; aborting\n";
+          std::cout << "(Certified angles between " << angle1 << " and the previous trap " << "\n";
+        }
+        return;
+      } else if (verbose>0) {
+        std::cout << "Found trap at " << current_z_in_box << " of radius " << epsilon << "\n";
+      }
+      double gamount = double(difficulty)/double(mand_trap_depth);
+      int col = get_rgb_color(0.5,gamount,1);
+      mand_draw_ball(Ball(current_z_in_box, epsilon), col);
+      
+      //find the next angle by intersecting the two circles
+      double next_angle = maximal_intersection_angle(cpx(0,0),(1.0/sqrt(2.0)),current_z_in_box,epsilon);
+      if (next_angle < 0) {
+        std::cout << "Something's wrong; trap ball should be over circle\n";
+        return;
+      }
+      if (next_angle > final_angle_in_box) break;
+      current_angle_in_box = next_angle;
+    }
+    
+    //**************** check and see if we are done
+    if (final_angle_in_box > angle2) break;
+    current_angle = final_angle_in_box;
+  }
+  
+  if (verbose>0) {
+    std::cout << "Successfully certified between angles " << angle1 << " and " << angle2 << "\n";
+  }
+
+}
+
 
 
 
@@ -2719,6 +2968,7 @@ void IFSGui::reset_and_pack_window() {
     T.str(""); T << mand_output_picture_size;
     W_mand_output_picture_size_label = WidgetText(this, T.str(), -1, 20);
     W_mand_output_picture_size_rightarrow = WidgetRightArrow(this, 20, 20, &IFSGui::S_mand_output_picture_increase_size);
+    W_mand_find_circle_traps = WidgetButton(this, "Find traps on circle", -1, 20, &IFSGui::S_mand_find_circle_traps);
     
     W_mand_path_create_by_drawing_button = WidgetButton(this, "Draw path", -1, 20, &IFSGui::S_mand_path_create_by_drawing_button);
     W_mand_path_create_by_boundary_button = WidgetButton(this, "Find boundary path", -1, 20, &IFSGui::S_mand_path_create_by_boundary);
@@ -2805,6 +3055,7 @@ void IFSGui::reset_and_pack_window() {
     pack_widget_upper_right(&W_mand_plot, &W_mand_mouse_Y);
     pack_widget_upper_right(&W_mand_plot, &W_mand_output_window);
     pack_widget_upper_right(&W_mand_plot, &W_mand_output_picture);
+    pack_widget_upper_right(&W_mand_plot, &W_mand_find_circle_traps);
     pack_widget_upper_right(&W_mand_output_picture, &W_mand_output_picture_size_leftarrow);
     pack_widget_upper_right(&W_mand_output_picture_size_leftarrow, &W_mand_output_picture_size_label);
     pack_widget_upper_right(&W_mand_output_picture_size_label, &W_mand_output_picture_size_rightarrow);
