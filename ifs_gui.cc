@@ -1,6 +1,7 @@
 #include <map>
 #include <set>
 #include <cstdlib>
+#include <cmath>
 
 #include "ifs_gui.h"
 
@@ -26,15 +27,15 @@ void circle_intersect_segment(cpx c, double r, cpx p1, cpx p2, double& a1, doubl
   cpx proj = p1 + t*base;
   double d = abs(proj - c);
   
-  std::cout << "Intersecting the circle " << c << " " << r << " with the segment " << p1 << " " << p1 << "\n";
+  std::cout << "Intersecting the circle " << c << " " << r << " with the segment " << p1 << " " << p2 << "\n";
   
   if (d > r) {
     a1 = a2 = -1;
     std::cout << "Can't possibly intersect\n";
     return;
   }
-  double along_base = sqrt(r*r - d*d);
-  double base_len = abs(base);
+  double along_base = std::sqrt(r*r - d*d);
+  double base_len = std::abs(base);
   cpx base_scaled = base / base_len;
   cpx int1 = proj + along_base*base_scaled;
   cpx int2 = proj - along_base*base_scaled;
@@ -43,17 +44,17 @@ void circle_intersect_segment(cpx c, double r, cpx p1, cpx p2, double& a1, doubl
   
   bool i1good = false;
   bool i2good = false;
-  if (abs(int1 - p1) < base_len && abs(int1 - p2) < base_len) i1good = true;
-  if (abs(int2 - p2) < base_len && abs(int2 - p2) < base_len) i2good = true;
+  if (abs(int1 - p1) <= base_len && abs(int1 - p2) <= base_len) i1good = true;
+  if (abs(int2 - p2) <= base_len && abs(int2 - p2) <= base_len) i2good = true;
   
   std::cout << "Good intersections? " << i1good << " " << i2good << "\n";
   
   if (i1good && i2good) {
     cpx d = int1 - c;
-    a1 = atan2(d.imag(), d.real());
+    a1 = std::atan2(d.imag(), d.real());
     if (a1 < 0) a1 += 2*PI;
     d = int2 - c;
-    a2 = atan2(d.imag(), d.real());
+    a2 = std::atan2(d.imag(), d.real());
     if (a2 < 0) a2 += 2*PI;
     if (a1 > a2) {
       double temp = a2;
@@ -62,17 +63,18 @@ void circle_intersect_segment(cpx c, double r, cpx p1, cpx p2, double& a1, doubl
     }
   } else if (i1good) {
     cpx d = int1 - c;
-    a1 = atan2(d.imag(), d.real());
+    a1 = std::atan2(d.imag(), d.real());
     if (a1 < 0) a1 += 2*PI;
     a2 = -1;
   } else if (i2good) {
     cpx d = int2 - c;
-    a1 = atan2(d.imag(), d.real());
+    a1 = std::atan2(d.imag(), d.real());
     if (a1 < 0) a1 += 2*PI;
     a2 = -1;
   } else {
     a1 = a2 = -1;
   }
+  std::cout << "Returning " << a1 << " " << a2 << "\n";
 }
     
     
@@ -91,7 +93,8 @@ void circle_intersect_box(cpx box_ll, cpx box_ur, cpx center, double radius, dou
     circle_intersect_segment(center, radius, points[i], points[(i+1)%4], ta1, ta2);
     if (ta1 >= 0) {
       if (points_found == 1) {
-        if (abs(ta1-a1) > 1e-12) {
+        std::cout << "We already have a point, so I'm comparing " << ta1 << " " << a1 << " got " << fabs(ta1-a1) << "\n";
+        if (std::fabs(ta1-a1) > 1e-12) {
           a2 = ta1;
           return;
         }
@@ -100,14 +103,14 @@ void circle_intersect_box(cpx box_ll, cpx box_ur, cpx center, double radius, dou
         points_found = 1;
       }
     }
-    if (ta2 >= 0 && abs(ta2-a1)>1e-12) {
+    if (ta2 >= 0 && std::fabs(ta2-a1)>1e-12) {
       a2 = ta2;
       return;
     }
   }
   if (a1 < 0) {
     double br = (box_ur.real()-box_ll.real())/2.0;
-    if (abs(center - ((box_ll+box_ur)/2.0)) < br) {
+    if (std::abs(center - ((box_ll+box_ur)/2.0)) < br) {
       a1 = 0;
       a2 = 2*3.14159265358979323846;
     } else {
@@ -119,10 +122,10 @@ void circle_intersect_box(cpx box_ll, cpx box_ur, cpx center, double radius, dou
 
 
 double maximal_intersection_angle(cpx c1, double r1, cpx c2, double r2) {
-  double d = abs(c2-c1);
+  double d = std::abs(c2-c1);
   if (d > r1+r2 || d < r2-r1 || d < r1-r2) return -1;
-  double alpha = acos((d*d + r1*r1 - r2*r2)/(2*d*r1));
-  double a = atan2( (c2-c1).imag(), (c2-c1).real() );
+  double alpha = std::acos((d*d + r1*r1 - r2*r2)/(2*d*r1));
+  double a = std::atan2( (c2-c1).imag(), (c2-c1).real() );
   if (a < 0) a += 2*3.14159265358979323846;
   return a + alpha;
 }
@@ -981,7 +984,7 @@ void IFSGui::S_mand_output_picture_decrease_size(XEvent* e) {
   
 void IFSGui::S_mand_find_circle_traps(XEvent* e) {
   if (e->type != ButtonPress) return;
-  find_traps_along_circle_in_window(1);
+  find_traps_along_circle_in_window(2);
 }
 
 
@@ -2462,7 +2465,7 @@ void IFSGui::find_coordinates_along_path(int verbose) {
     double t2, ell2;
     if (temp_IFS.compute_coordinates( &t1, &ell1, mand_theta_depth ) &&
         temp_IFS.compute_coordinates( &t2, &ell2, mand_theta_depth+1) ) {
-      if (abs(t1) < 1 && abs(t2) < 1 && abs(ell1) < 3 && abs(ell2) < 3) {
+      if (std::fabs(t1) < 1 && std::fabs(t2) < 1 && std::fabs(ell1) < 3 && std::fabs(ell2) < 3) {
         path.coordinates.push_back( std::make_pair( 0.5*(t1+t2), 0.5*(ell1+ell2)) );
       }
     }
@@ -2554,19 +2557,19 @@ void IFSGui::find_traps_along_path(int verbose) {
       double gamount = double(difficulty)/double(mand_trap_depth);
       path.trap_colors.push_back( get_rgb_color(0.5,gamount,1) );
       cpx v = end_z-current_z;
-      current_z = current_z + epsilon*(v/abs(v));
+      current_z = current_z + epsilon*(v/std::abs(v));
       
       //draw it to show what's happening
       mand_draw_ball(path.traps.back(), path.trap_colors.back());
       
-    } while ( abs(path.traps.back().center - end_z) >= path.traps.back().radius );
+    } while ( std::abs(path.traps.back().center - end_z) >= path.traps.back().radius );
   }
 }
 
 
 void IFSGui::find_traps_along_circle_in_window(int verbose) {
   double PI = 3.14159265358979323846;
-  std::cout.precision(8);
+  std::cout.precision(12);
   //We need to focus on small windows along the circle
   //first, figure out where the window intersects the circle
   double angle1, angle2;
@@ -2589,7 +2592,7 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
   while (true) {
     current_z = (1.0/sqrt(2.0))*cpx(cos(current_angle), sin(current_angle));
     if (verbose>0) {
-      std::cout << "Finding TLB at angle " << current_angle << ", i.e. " << current_z << "\n";
+      std::cout << "Finding a box and TLB at angle " << current_angle << ", i.e. " << current_z << "\n";
     }
     std::vector<Ball> TLB;
     ifs temp_IFS;
@@ -2625,7 +2628,10 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
       box_diameter /= 2.0;
     }
     if (!found_TLB) {
-      if (verbose>0) std::cout << "Couldn't find TLB; aborting\n";
+      if (verbose>0) {
+        std::cout << "Couldn't find TLB; aborting\n";
+        std::cout << "(Certified angles between " << angle1 << " and the previous trap " << ")\n";
+      }
       return;
     } else if (verbose>0) {
       std::cout << "Found TLB; final angle is " << final_angle_in_box << "\n";
@@ -2642,7 +2648,7 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
       if (difficulty < 0) {
         if (verbose>0) {
           std::cout << "Failed to find trap at angle " << current_angle_in_box << "; aborting\n";
-          std::cout << "(Certified angles between " << angle1 << " and the previous trap " << "\n";
+          std::cout << "(Certified angles between " << angle1 << " and the previous trap " << ")\n";
         }
         return;
       } else if (verbose>0) {
