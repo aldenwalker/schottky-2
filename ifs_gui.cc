@@ -44,8 +44,8 @@ void circle_intersect_segment(cpx c, double r, cpx p1, cpx p2, double& a1, doubl
   
   bool i1good = false;
   bool i2good = false;
-  if (abs(int1 - p1) <= base_len && abs(int1 - p2) <= base_len) i1good = true;
-  if (abs(int2 - p2) <= base_len && abs(int2 - p2) <= base_len) i2good = true;
+  if (abs(int1 - p1) < base_len+1e-12 && abs(int1 - p2) < base_len+1e-12) i1good = true;
+  if (abs(int2 - p2) < base_len+1e-12 && abs(int2 - p2) < base_len+1e-12) i2good = true;
   
   std::cout << "Good intersections? " << i1good << " " << i2good << "\n";
   
@@ -2652,7 +2652,7 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
         }
         return;
       } else if (verbose>0) {
-        std::cout << "Found trap at " << current_z_in_box << " of radius " << epsilon << "\n";
+        std::cout << "Found trap at " << current_z_in_box << " angle " << current_angle_in_box << " of radius " << epsilon << "\n";
       }
       double gamount = double(difficulty)/double(mand_trap_depth);
       int col = get_rgb_color(0.5,gamount,1);
