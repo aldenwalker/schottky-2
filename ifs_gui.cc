@@ -2575,8 +2575,9 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
   double angle1, angle2;
   circle_intersect_box(mand_ll, mand_ur, cpx(0,0), 1.0/sqrt(2.0), angle1, angle2);
   if (angle1 > PI/2.0) {
-    std::cout << "Sorry, this function only works in the upper right quadrant\n";
-    return;
+    std::cout << "This function only works in the upper right quadrant\n";
+    std::cout << "I'm assuming you want to start at zero\n";
+    angle1 = 0;
   }
   if (angle2 > PI/2.0) {
     angle2 = PI/2.0;
@@ -2587,6 +2588,10 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
   double current_angle = angle1;
   cpx current_z;
   
+  bool all_good = true;
+  std::vector<std::pair<double,double> > certified_intervals(0);
+  std::pair<double,double> current_certified_interval;
+  current_certified_interval = std::make_pair(-1,-1);
   double max_box_diameter = 0.0001;
   double min_box_diameter = 0.00001;
   while (true) {
@@ -2615,11 +2620,11 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
       }
       temp_IFS.set_params(box_middle, box_middle);
       found_TLB = temp_IFS.TLB_for_region(TLB, box_ll, box_ur, 15, &TLB_C, &TLB_Z, 0);
+      box_ll += 0.001*cpx(box_diameter,box_diameter);
+      box_ur -= 0.001*cpx(box_diameter,box_diameter);
+      double a;
+      circle_intersect_box(box_ll, box_ur, cpx(0.0), 1.0/sqrt(2.0), a, final_angle_in_box);
       if (found_TLB || box_diameter/2.0 < min_box_diameter) {
-        box_ll += 0.001*cpx(box_diameter,box_diameter);
-        box_ur -= 0.001*cpx(box_diameter,box_diameter);
-        double a;
-        circle_intersect_box(box_ll, box_ur, cpx(0.0), 1.0/sqrt(2.0), a, final_angle_in_box);
         if (verbose>0) {
           std::cout << "Box will be good; angles of intersection are: " << a << " " << final_angle_in_box << "\n";
         }
@@ -2632,7 +2637,19 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
         std::cout << "Couldn't find TLB; aborting\n";
         std::cout << "(Certified angles between " << angle1 << " and the previous trap " << ")\n";
       }
-      return;
+      if (current_certified_interval.second > 0) {
+        certified_intervals.push_back(current_certified_interval);
+        if (verbose>1) {
+          std::cout << "Had to cut certified interval; current list is now:\n";
+          for (int i=0; i<(int)certified_intervals.size(); ++i) {
+            std::cout << i << ": (" << certified_intervals[i].first << "," << certified_intervals[i].second << ")\n";
+          }
+        }
+      }
+      current_certified_interval = std::make_pair(-1,-1);
+      all_good = false;
+      current_angle = final_angle_in_box;
+      continue;
     } else if (verbose>0) {
       std::cout << "Found TLB; final angle is " << final_angle_in_box << "\n";
     }
@@ -2648,11 +2665,27 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
       if (difficulty < 0) {
         if (verbose>0) {
           std::cout << "Failed to find trap at angle " << current_angle_in_box << "; aborting\n";
-          std::cout << "(Certified angles between " << angle1 << " and the previous trap " << ")\n";
+          //std::cout << "(Certified angles between " << angle1 << " and the previous trap " << ")\n";
         }
-        return;
+        if (current_certified_interval.second > 0) {
+          certified_intervals.push_back(current_certified_interval);
+          if (verbose>1) {
+            std::cout << "Had to cut certified interval; current list is now:\n";
+            for (int i=0; i<(int)certified_intervals.size(); ++i) {
+              std::cout << i << ": (" << certified_intervals[i].first << "," << certified_intervals[i].second << ")\n";
+            }
+          }
+        }
+        current_certified_interval = std::make_pair(-1,-1);
+        all_good = false;
+        break;
       } else if (verbose>0) {
         std::cout << "Found trap at " << current_z_in_box << " angle " << current_angle_in_box << " of radius " << epsilon << "\n";
+      }
+      if (current_certified_interval.first < 0) {
+        current_certified_interval.first = current_angle_in_box;
+      } else {
+        current_certified_interval.second = current_angle_in_box;
       }
       double gamount = double(difficulty)/double(mand_trap_depth);
       int col = get_rgb_color(0.5,gamount,1);
@@ -2673,8 +2706,21 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
     current_angle = final_angle_in_box;
   }
   
+  //if there's a current certified interval, we need to add it
+  if (current_certified_interval.second > 0) {
+    certified_intervals.push_back(current_certified_interval);
+  }
+  
   if (verbose>0) {
-    std::cout << "Successfully certified between angles " << angle1 << " and " << angle2 << "\n";
+    if (all_good) {
+      std::cout << "Successfully certified between angles " << angle1 << " and " << angle2 << "\n";
+    } else {
+      std::cout << "Didn't certify all angles\n";
+    }
+    std::cout << "Certified these intervals:\n";
+    for (int i=0; i<(int)certified_intervals.size(); ++i) {
+      std::cout << i << ": (" << certified_intervals[i].first << "," << certified_intervals[i].second << ")\n";
+    }
   }
 
 }
