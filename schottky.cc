@@ -27,7 +27,17 @@ int main(int argc, char *argv[]) {
   int mode = 0;
   
   if (argc > 1) {
-    w = atoi(argv[1]);
+    if (std::string(argv[1]) == "-a" && argc == 5) {
+      double a1 = atof(argv[2]);
+      double a2 = atof(argv[3]);
+      int trap_depth = atoi(argv[4]);
+      IFSGui G;
+      G.mand_trap_depth = trap_depth;
+      G.mand_ll = (1.0/sqrt(2.0))*cpx( cos(a2), sin(a1) );
+      G.mand_ur = (1.0/sqrt(2.0))*cpx( cos(a1), sin(a2) );
+      G.find_traps_along_circle_in_window(2, false);
+      return 0;
+    }
   }
   
   //std::cout << sizeof(long long int) <<"\n";

@@ -2567,7 +2567,7 @@ void IFSGui::find_traps_along_path(int verbose) {
 }
 
 
-void IFSGui::find_traps_along_circle_in_window(int verbose) {
+void IFSGui::find_traps_along_circle_in_window(int verbose, bool do_drawing) {
   double PI = 3.14159265358979323846;
   std::cout.precision(12);
   //We need to focus on small windows along the circle
@@ -2688,8 +2688,10 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
         current_certified_interval.second = current_angle_in_box;
       }
       double gamount = double(difficulty)/double(mand_trap_depth);
-      int col = get_rgb_color(0.5,gamount,1);
-      mand_draw_ball(Ball(current_z_in_box, epsilon), col);
+      if (do_drawing) {
+        int col = get_rgb_color(0.5,gamount,1);
+        mand_draw_ball(Ball(current_z_in_box, epsilon), col);
+      }
       
       //find the next angle by intersecting the two circles
       //double next_angle = maximal_intersection_angle(cpx(0,0),(1.0/sqrt(2.0)),current_z_in_box,epsilon);

@@ -226,7 +226,7 @@ struct IFSGui {
   void mand_draw_ball(const Ball& b, int col);
   void recompute_point_data();
   void find_traps_along_path(int verbose);
-  void find_traps_along_circle_in_window(int verbose);
+  void find_traps_along_circle_in_window(int verbose, bool do_drawing=true);
   void find_coordinates_along_path(int verbose);
   
   //graphics stuff
