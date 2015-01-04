@@ -2692,12 +2692,28 @@ void IFSGui::find_traps_along_circle_in_window(int verbose) {
       mand_draw_ball(Ball(current_z_in_box, epsilon), col);
       
       //find the next angle by intersecting the two circles
-      double next_angle = maximal_intersection_angle(cpx(0,0),(1.0/sqrt(2.0)),current_z_in_box,epsilon);
-      if (next_angle < 0) {
-        std::cout << "Something's wrong; trap ball should be over circle\n";
-        return;
+      //double next_angle = maximal_intersection_angle(cpx(0,0),(1.0/sqrt(2.0)),current_z_in_box,epsilon);
+      double next_angle, angle_add;
+      if (epsilon < 1e-7) {
+        angle_add = sqrt(2.0)*epsilon;
+      } else {
+        angle_add = std::acos(1-epsilon*epsilon);
       }
-      if (next_angle > final_angle_in_box) break;
+      next_angle = current_angle_in_box + angle_add;
+      if (verbose>0) {
+        std::cout << "Next angle: " << next_angle << "\n";
+      }
+      if (next_angle > final_angle_in_box) { 
+        if (verbose>0) {
+          std::cout << "Done this box\n";
+          std::cout << "Certified intervals are:\n";
+          for (int i=0; i<(int)certified_intervals.size(); ++i) {
+            std::cout << i << ": (" << certified_intervals[i].first << "," << certified_intervals[i].second << ")\n";
+          }
+          std::cout << "Current working certified interval is: " << current_certified_interval.first << " " << current_certified_interval.second << "\n";
+        }
+        break;
+      }
       current_angle_in_box = next_angle;
     }
     
