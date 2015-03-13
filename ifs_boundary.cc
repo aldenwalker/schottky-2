@@ -774,9 +774,31 @@ bool ifs::compute_boundary_space(BoundarySpace& BS,
 
 
 
+/****************************************************************************
+ * compute the boundary using just balls
+ * **************************************************************************/
+void ifs::compute_boundary_balls(std::vector<Ball>& ball_boundary, 
+                                 int n_depth, 
+                                 int verbose) {
+  //check if we are in the reasonable region 
+  if (abs(z) > 1.0/sqrt(2.0) + 0.01) return false;
+  
+  //first, compute all the balls
+  ifs temp_IFS;
+  temp_IFS.set_params(z,z);
+  temp_IFS.depth = n_depth;
+  
+  //find all the balls
+  double min_r;
+  if (!temp_IFS.minimal_enclosing_radius(min_r))  return false;
+  if (!temp_IFS.circ_connected(min_r)) return false;
+  
+  Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
+  std::vector<Ball> balls(0);
+  temp_IFS.compute_balls(balls, initial_ball, n_depth);
 
 
-
+}
 
 
 
