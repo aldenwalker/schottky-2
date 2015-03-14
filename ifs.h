@@ -220,7 +220,7 @@ class ifs{
     void draw_color_chunky_dots(int d, cpx u, long color, double radius);
     void draw_limit_set();
     
-    //IFS coordinate computation
+    //IFS coordinate computation and boundary
     bool compute_coordinates(double* theta, double* lambda, int n_depth);
     bool compute_new_theta(double* theta, int n_depth);
     bool compute_boundary_and_f_boundary(std::vector<Bitword>& whole_boundary, 
@@ -230,7 +230,7 @@ class ifs{
     bool compute_boundary_space(BoundarySpace& BS,
                                 int n_depth,
                                 int lam_depth);
-    
+    bool certify_linear_conjugacy(double& epsilon, int n_depth, int verbose);
     
     
     //mandelbrot mode

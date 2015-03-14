@@ -774,33 +774,79 @@ bool ifs::compute_boundary_space(BoundarySpace& BS,
 
 
 
-/****************************************************************************
- * compute the boundary using just balls
- * **************************************************************************/
-void ifs::compute_boundary_balls(std::vector<Ball>& ball_boundary, 
-                                 int n_depth, 
-                                 int verbose) {
-  //check if we are in the reasonable region 
-  if (abs(z) > 1.0/sqrt(2.0) + 0.01) return false;
-  
-  //first, compute all the balls
+
+
+
+
+/**************************************************************************
+ * functions to certify that the linear semiconjugacy is a conjugacy
+ **************************************************************************/
+bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   ifs temp_IFS;
   temp_IFS.set_params(z,z);
   temp_IFS.depth = n_depth;
   
-  //find all the balls
   double min_r;
-  if (!temp_IFS.minimal_enclosing_radius(min_r))  return false;
+  if (!temp_IFS.minimal_enclosing_radius(min_r)) return false;
   if (!temp_IFS.circ_connected(min_r)) return false;
   
+  //compute the balls, plus the pairs of balls which touch
   Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
   std::vector<Ball> balls(0);
   temp_IFS.compute_balls(balls, initial_ball, n_depth);
+  
+  Ball fi = temp_IFS.act_on_left(0, initial_ball);
+  Ball gi = temp_IFS.act_on_left(1, initial_ball);
+  std::vector<std::pair<Ball,Ball> > stack(0);
+  stack.push_back(std::make_pair(fi,gi));
+  std::vector<std::pair<Ball,Ball> > intersection_pairs(0);
+  while ((int)stack.size() > 0) {
+    Ball tf = stack.back().first;
+    Ball tg = stack.back().second;
+    stack.pop_back();
+    if (tf.is_disjoint(tg)) continue;
+    if (tf.word_len == n_depth) {
+      intersection_pairs.push_back(std::make_pair(tf,tg));
+      continue;
+    }
+    Ball tf1 = temp_IFS.act_on_right(0, tf);
+    Ball tf2 = temp_IFS.act_on_right(1, tf);
+    Ball tg1 = temp_IFS.act_on_right(0, tg);
+    Ball tg2 = temp_IFS.act_on_right(1, tg);
+    stack.push_back(std::make_pair(tf1, tg1));
+    stack.push_back(std::make_pair(tf1, tg2));
+    stack.push_back(std::make_pair(tf2, tg1));
+    stack.push_back(std::make_pair(tf2, tg2));
+  }
+  
+  bool found_00_pair = false;
+  bool found_01_pair = false;
+  for (int i=0; i<(int)intersection_pairs.size(); ++i) {
+    //
+  }
+  
+  //if there are both pairs with at least one ball with a 00/11 prefix
+  //and pairs with 01/10, then we need to give up
+  if (found_00_pair && found_01_pair) return false;
+  
+  //If the only intersecting pairs have at least one of the balls
+  //with a 00 or 11 prefix, then we know we're conjugate since this is 
+  //the case with one discontinuity.  The epsilon in this case 
+  //is the one which prevents any 01/10 pairs from touching
+  if (found_00_pair) {
+    
+    return true;
+  }
+  
+  //if all the pairs are not 00/11, then we can go
+  
+  
+  
+  
+  
 
-
+  return true;
 }
-
-
 
 
 
