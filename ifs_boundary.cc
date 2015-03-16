@@ -774,14 +774,22 @@ bool ifs::compute_boundary_space(BoundarySpace& BS,
 
 
 
+/****************************************************************************
+* compute boundary balls not using a trap grid
+****************************************************************************/
+void non_grid_ball_boundary(std::vector<Ball>& boundary, std::vector<Ball>& balls, int verbose) {
 
-
+}
 
 
 /**************************************************************************
  * functions to certify that the linear semiconjugacy is a conjugacy
  **************************************************************************/
 bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
+
+  if (abs(z) > 1.0/sqrt(2.0)) return false;
+  if (z.real() < 0 || z.imag() < 0) return false;
+
   ifs temp_IFS;
   temp_IFS.set_params(z,z);
   temp_IFS.depth = n_depth;
@@ -795,34 +803,23 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   std::vector<Ball> balls(0);
   temp_IFS.compute_balls(balls, initial_ball, n_depth);
   
-  Ball fi = temp_IFS.act_on_left(0, initial_ball);
-  Ball gi = temp_IFS.act_on_left(1, initial_ball);
-  std::vector<std::pair<Ball,Ball> > stack(0);
-  stack.push_back(std::make_pair(fi,gi));
-  std::vector<std::pair<Ball,Ball> > intersection_pairs(0);
-  while ((int)stack.size() > 0) {
-    Ball tf = stack.back().first;
-    Ball tg = stack.back().second;
-    stack.pop_back();
-    if (tf.is_disjoint(tg)) continue;
-    if (tf.word_len == n_depth) {
-      intersection_pairs.push_back(std::make_pair(tf,tg));
-      continue;
-    }
-    Ball tf1 = temp_IFS.act_on_right(0, tf);
-    Ball tf2 = temp_IFS.act_on_right(1, tf);
-    Ball tg1 = temp_IFS.act_on_right(0, tg);
-    Ball tg2 = temp_IFS.act_on_right(1, tg);
-    stack.push_back(std::make_pair(tf1, tg1));
-    stack.push_back(std::make_pair(tf1, tg2));
-    stack.push_back(std::make_pair(tf2, tg1));
-    stack.push_back(std::make_pair(tf2, tg2));
-  }
+  //compute the intersection pairs
+  std::vector<std::pair<Ball,Ball> > intersection_pairs = temp_IFS.compute_intersection_pairs(n_depth, initial_ball);
   
+  //a 00 pair means a pair in which one of the balls has duplicate first letters
+  //a 01 pair is anything else
   bool found_00_pair = false;
   bool found_01_pair = false;
   for (int i=0; i<(int)intersection_pairs.size(); ++i) {
-    //
+    std::pair<Ball,Ball>& p = intersection_pairs[i];
+    //these bools are true if the ball has duplicate first letters
+    bool b1 = (p.first.word[p.first.word_len-1] == p.first.word[p.first.word_len-2]);
+    bool b2 = (p.second.word[p.second.word_len-1] == p.second.word[p.second.word_len-2]);
+    if (b1 || b2) {
+      found_00_pair = true;
+    } else {
+      found_01_pair = true;
+    }
   }
   
   //if there are both pairs with at least one ball with a 00/11 prefix
@@ -834,11 +831,34 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   //the case with one discontinuity.  The epsilon in this case 
   //is the one which prevents any 01/10 pairs from touching
   if (found_00_pair) {
+    //get the closest 01 distance
+    double d = temp_IFS.nonduplicate_first_letter_distance(n_depth, initial_ball, 0);
+    //subtract the radius of the balls
+    d -= 2*min_r*pow(abs(z), n_depth);
+    
+    //a bound on the derivative of the distance between centers is 
+    //2 (1/Sqrt[2])/(1/Sqrt[2] - 1)^2 ~= 16.48528
+    //the radii of the disks changes too; it can change as 
+    //fast as 11.65685
+    double deriv = 16.4853 + 11.6569;
+    
+    //compute epsilon from the distance
+    epsilon = d/deriv;
     
     return true;
   }
   
   //if all the pairs are not 00/11, then we can go
+  
+  //get the boundary (it is guaranteed to start at the g->f junction)
+  std::vector<Ball> boundary(0);
+  non_grid_ball_boundary(boundary, balls);
+  
+  //get the convex hull
+  std::vector<int> ch;
+  std::vector<cpx> ch_points;
+  std::vector<halfspace> ch_halfspaces;
+  ball_convex_hull(ch, ch_points, ch_halfspaces, boundary);
   
   
   

@@ -76,7 +76,7 @@ void ball_convex_hull(std::vector<int>& ch,
 
 void box_containing_points(const std::vector<cpx>& points, cpx& ll, cpx& ur);
 
-
+void non_grid_ball_boundary(std::vector<Ball>& boundary, std::vector<Ball>& balls, int verbose=0);
 
 /**************************************************************************
  * a bit word
@@ -257,6 +257,9 @@ class ifs{
     bool contains_point(cpx pt, double r=-1);
     bool contains_point_recurse(const cpx& pt, const Ball& b, int d);
 		bool contains_half(int d, int& difficulty);
+		
+		std::vector<std::pair<Ball,Ball> > compute_intersection_pairs(int n_depth, Ball initial_ball, int verbose=0);
+		double nonduplicate_first_letter_distance(int n_depth, Ball initial_ball, int temp_list_max=0, int verbose=0);
 		
     //trap construction
     bool draw_trap_mode;      //whether to check for a trap and draw it in limit set mode

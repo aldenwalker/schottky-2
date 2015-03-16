@@ -199,6 +199,69 @@ bool ifs::contains_half(int d, int& difficulty) {
 }
 
 
+std::vector<std::pair<Ball,Ball> > ifs::compute_intersection_pairs(int n_depth, 
+                                                                   Ball initial_ball, 
+                                                                   int verbose) {
+  std::vector<std::pair<Ball,Ball> > ans(0);
+  Ball fi = act_on_left(0, initial_ball);
+  Ball gi = act_on_left(1, initial_ball);
+  std::vector<std::pair<Ball,Ball> > stack(0);
+  stack.push_back(std::make_pair(fi,gi));
+  while ((int)stack.size() > 0) {
+    Ball tf = stack.back().first;
+    Ball tg = stack.back().second;
+    stack.pop_back();
+    if (tf.is_disjoint(tg)) continue;
+    if (tf.word_len == n_depth) {
+      ans.push_back(std::make_pair(tf,tg));
+      continue;
+    }
+    Ball tf1 = act_on_right(0, tf);
+    Ball tf2 = act_on_right(1, tf);
+    Ball tg1 = act_on_right(0, tg);
+    Ball tg2 = act_on_right(1, tg);
+    stack.push_back(std::make_pair(tf1, tg1));
+    stack.push_back(std::make_pair(tf1, tg2));
+    stack.push_back(std::make_pair(tf2, tg1));
+    stack.push_back(std::make_pair(tf2, tg2));
+  }
+  return ans;
+}
+
+
+double ifs::nonduplicate_first_letter_distance(int n_depth, 
+                                              Ball initial_ball, 
+                                              int temp_list_max, 
+                                              int verbose) {
+  Ball fi = act_on_left(0, initial_ball);
+  fi = act_on_right(1, fi);
+  Ball gi = act_on_left(1, initial_ball);
+  gi = act_on_right(0, gi);
+  double min_dist = abs(fi.center - gi.center);
+  std::vector<std::pair<Ball,Ball> > stack(0);
+  stack.push_back(std::make_pair(fi,gi));
+  while ((int)stack.size() > 0) {
+    Ball tf = stack.back().first;
+    Ball tg = stack.back().second;
+    stack.pop_back();
+    if (abs(tf.center - tg.center) > min_dist + 4*tf.radius) continue;
+    if (tf.word_len == n_depth) {
+      double d = abs(tf.center-tg.center);
+      if (d < min_dist) min_dist = d;
+      continue;
+    }
+    Ball tf1 = act_on_right(0, tf);
+    Ball tf2 = act_on_right(1, tf);
+    Ball tg1 = act_on_right(0, tg);
+    Ball tg2 = act_on_right(1, tg);
+    stack.push_back(std::make_pair(tf1, tg1));
+    stack.push_back(std::make_pair(tf1, tg2));
+    stack.push_back(std::make_pair(tf2, tg1));
+    stack.push_back(std::make_pair(tf2, tg2));
+  }
+  return min_dist;
+}
+
 
 
 
