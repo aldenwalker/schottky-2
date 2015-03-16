@@ -774,11 +774,159 @@ bool ifs::compute_boundary_space(BoundarySpace& BS,
 
 
 
+
+/***************************************************************************
+ * these are plain ball functions which are useful for building
+ * the non-grid ball boundary
+ * *************************************************************************/
+
+/****************************************************************************
+ * get a list of all the indices of balls which intersect the ball b.
+ * These indices are returned as a list of ints, where each int gives 
+ * the fg word of the intersecting ball in bits
+ * **************************************************************************/
+std::vector<int> balls_which_intersect_ball(Ball& b, 
+                                            std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                            int verbose) {
+  std::vector<Bitword> bitword_ans(0);
+  std::vector<int> ans;
+  //this is the same as the uv graph
+  //we just need to find all suffixes of b which agree with a prefix of an 
+  //intersection pair and then swap for the other member of the 
+  //intersection pair
+  Bitword bw(b.word, b.word_len);
+  
+  //get a list of the bitwords from the balls
+  std::vector<std::pair<Bitword,Bitword> > intersection_pair_bitwords(intersection_pairs.size());
+  for (int i=0; i<(int)intersection_pairs.size(); ++i) {
+    intersection_pair_bitwords[i] = std::make_pair(Bitword(intersection_pairs[i].first.word, intersection_pairs[i].first.word_len),
+                                                   Bitword(intersection_pairs[i].second.word, intersection_pairs[i].second.word_len));
+  }
+  
+  //do the swapping
+  for (int n=1; n<=bw.len; ++n) {
+    Bitword suffix = bw.suffix(n);
+    for (int i=0; i<(int)intersection_pairs.size(); ++i) {
+      if (suffix.reverse_get(0) == 0) {
+        if (intersection_pair_bitwords[i].first == suffix) {
+          bitword_ans.push_back( bw.swapped_suffix(n, intersection_pair_bitwords[i].second) );
+        }
+      } else {
+        if (intersection_pair_bitwords[i].second == suffix) {
+          bitword_ans.push_back( bw.swapped_suffix(n, intersection_pair_bitwords[i].first) );
+        }
+      }
+    }
+  }
+  
+  ans.resize(bitword_ans.size());
+  for (int i=0; i<(int)bitword_ans.size(); ++i) {
+    ans[i] = bitword_ans[i].to_int();
+  }
+  
+  return ans;
+}
+
+
+/***************************************************************************
+ * this returns true if the three given angles are cyclically in order
+ * *************************************************************************/
+bool cyclically_ordered(double a, double b, double c) {
+  double PI = 3.14159265358979;
+  if (b<a) b += 2*PI;
+  if (c<a) c += 2*PI;
+  return b<c;
+}
+
+/***************************************************************************
+ * this searches among the indices in intersecting balls to find the 
+ * one which intersects last before the angle.  If the angle is inside 
+ * an intersecting interval, the result is undefined
+ * *************************************************************************/
+int last_intersecting_ball_before_angle(std::vector<Ball>& balls, 
+                                        int current_ball_i, 
+                                        std::vector<int>& intersecting_balls, 
+                                        double angle,
+                                        int verbose) {
+  std::vector<double> last_angles(intersecting_balls.size());
+  for (int i=0; i<(int)intersecting_balls.size(); ++i) {
+    last_angles[i] = balls[current_ball_i].intersection_interval( balls[intersecting_balls[i]] ).second;
+  }
+  int closest_last_angle_i = 0;
+  for (int i=1; i<(int)last_angles.size(); ++i) {
+    if (cyclically_ordered( last_angles[closest_last_angle_i], last_angles[i], angle )) {
+      closest_last_angle_i = i;
+    }
+  }
+    
+  return intersecting_balls[closest_last_angle_i];
+}
+
+/**************************************************************************
+ * this searchs among the indices in intersecting_balls to find the 
+ * index of the ball which intersects current_ball_i first after the 
+ * ball prev_ball_i
+ * ************************************************************************/
+int next_intersecting_ball_after_ball(std::vector<Ball>& balls, 
+                                      int current_ball_i, 
+                                      int prev_ball_i, 
+                                      std::vector<int>& intersecting_balls,
+                                      int verbose) {
+  return 0;
+}
+
+
+
+
+
+
+
 /****************************************************************************
 * compute boundary balls not using a trap grid
 ****************************************************************************/
-void non_grid_ball_boundary(std::vector<Ball>& boundary, std::vector<Ball>& balls, int verbose) {
-
+void non_grid_ball_boundary_indices(std::vector<int>& boundary, 
+                                    std::vector<Ball>& balls, 
+                                    std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                    int verbose) {
+  boundary.resize(0);
+  
+  //find the ball with the greatest x coord 
+  int max_x_ball_i = 0;
+  for (int i=0; i<(int)balls.size(); ++i) {
+    if (balls[i].center.real() > balls[max_x_ball_i].center.real()) {
+      max_x_ball_i = balls[i].center.real();
+    }
+  }
+  
+  //so balls[max_x_ball_i] must have angle 0 exposed
+  int current_ball_i = max_x_ball_i;
+  std::vector<int> intersecting_balls = balls_which_intersect_ball(balls[current_ball_i], intersection_pairs);
+  //get the ball which is previous in the boundary
+  int prev_ball_i = last_intersecting_ball_before_angle(balls, current_ball_i, intersecting_balls, 0.0);  
+  int next_ball_i;
+  
+  while (true) {
+    //get the next ball after the previous one
+    next_ball_i = next_intersecting_ball_after_ball(balls, current_ball_i, prev_ball_i, intersecting_balls);
+    
+    //we might have looped around
+    if (boundary.size() > 2 &&
+        current_ball_i == boundary[0] &&
+        next_ball_i == boundary[1]) {
+      break;
+    }
+    
+    //if we haven't looped, we should put on the current ball
+    boundary.push_back(current_ball_i);
+    
+    //next becomes current and current becomes previous
+    prev_ball_i = current_ball_i;
+    current_ball_i = next_ball_i;
+    
+    //compute the intersecting balls
+    intersecting_balls = balls_which_intersect_ball(balls[current_ball_i], intersection_pairs);
+  }
+  
 }
 
 
@@ -804,7 +952,7 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   temp_IFS.compute_balls(balls, initial_ball, n_depth);
   
   //compute the intersection pairs
-  std::vector<std::pair<Ball,Ball> > intersection_pairs = temp_IFS.compute_intersection_pairs(n_depth, initial_ball);
+  std::vector<std::pair<Ball,Ball> > intersection_pairs = temp_IFS.compute_intersection_pairs(n_depth, initial_ball, true);
   
   //a 00 pair means a pair in which one of the balls has duplicate first letters
   //a 01 pair is anything else
@@ -812,6 +960,7 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   bool found_01_pair = false;
   for (int i=0; i<(int)intersection_pairs.size(); ++i) {
     std::pair<Ball,Ball>& p = intersection_pairs[i];
+    if (p.first.word_len < n_depth) continue;
     //these bools are true if the ball has duplicate first letters
     bool b1 = (p.first.word[p.first.word_len-1] == p.first.word[p.first.word_len-2]);
     bool b2 = (p.second.word[p.second.word_len-1] == p.second.word[p.second.word_len-2]);
@@ -851,14 +1000,19 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   //if all the pairs are not 00/11, then we can go
   
   //get the boundary (it is guaranteed to start at the g->f junction)
-  std::vector<Ball> boundary(0);
-  non_grid_ball_boundary(boundary, balls);
+  std::vector<int> boundary_indices(0);
+  std::vector<Ball> boundary_balls(0);
+  non_grid_ball_boundary_indices(boundary_indices, balls, intersection_pairs);
+  boundary_balls.resize(boundary_indices.size());
+  for (int i=0; i<(int)boundary_indices.size(); ++i) {
+    boundary_balls[i] = balls[boundary_indices[i]];
+  }
   
   //get the convex hull
   std::vector<int> ch;
   std::vector<cpx> ch_points;
   std::vector<halfspace> ch_halfspaces;
-  ball_convex_hull(ch, ch_points, ch_halfspaces, boundary);
+  ball_convex_hull(ch, ch_points, ch_halfspaces, boundary_balls);
   
   
   

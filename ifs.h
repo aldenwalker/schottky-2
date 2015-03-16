@@ -9,6 +9,8 @@
 
 #include "point.h"
 
+bool cyclically_ordered(double a, double b, double c);
+
 /*************************************************************************
  * convex hull computational geometry stuff
  * ***********************************************************************/
@@ -65,6 +67,7 @@ struct Ball {
   bool is_disjoint(const Ball& b);
   bool is_disjoint(const cpx& ll, const cpx& ur);
   bool is_contained(const cpx& ll, const cpx& ur);
+  std::pair<double,double> intersection_interval(const Ball& other) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Ball& b);
@@ -76,7 +79,26 @@ void ball_convex_hull(std::vector<int>& ch,
 
 void box_containing_points(const std::vector<cpx>& points, cpx& ll, cpx& ur);
 
-void non_grid_ball_boundary(std::vector<Ball>& boundary, std::vector<Ball>& balls, int verbose=0);
+void non_grid_ball_boundary_indices(std::vector<int>& boundary, 
+                                    std::vector<Ball>& balls, 
+                                    std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                    int verbose=0);
+
+std::vector<int> balls_which_intersect_ball(Ball& b, 
+                                            std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                            int verbose = 0);
+
+int last_intersecting_ball_before_angle(std::vector<Ball>& balls, 
+                                        int current_ball_i, 
+                                        std::vector<int>& intersecting_balls, 
+                                        double angle,
+                                        int verbose=0);  
+
+int next_intersecting_ball_after_ball(std::vector<Ball>& balls, 
+                                      int current_ball_i, 
+                                      int prev_ball_i, 
+                                      std::vector<int>& intersecting_balls,
+                                      int verbose=0);
 
 /**************************************************************************
  * a bit word
@@ -106,6 +128,8 @@ struct Bitword {
   bool operator==(const Bitword& b) const;
   bool operator!=(const Bitword& b) const;
   void copy_prefix(const Bitword& b, int n);
+  Bitword swapped_suffix(int n, const Bitword& b) const;
+  int to_int() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Bitword& b);
@@ -256,11 +280,13 @@ class ifs{
     bool is_connected(int d, int& difficulty); //automates it
     bool contains_point(cpx pt, double r=-1);
     bool contains_point_recurse(const cpx& pt, const Ball& b, int d);
-		bool contains_half(int d, int& difficulty);
-		
-		std::vector<std::pair<Ball,Ball> > compute_intersection_pairs(int n_depth, Ball initial_ball, int verbose=0);
-		double nonduplicate_first_letter_distance(int n_depth, Ball initial_ball, int temp_list_max=0, int verbose=0);
-		
+    bool contains_half(int d, int& difficulty);
+    std::vector<std::pair<Ball,Ball> > compute_intersection_pairs(int n_depth, 
+                                                                  Ball initial_ball, 
+                                                                  bool find_all_depths, 
+                                                                  int verbose=0);
+    double nonduplicate_first_letter_distance(int n_depth, Ball initial_ball, int temp_list_max=0, int verbose=0);
+    
     //trap construction
     bool draw_trap_mode;      //whether to check for a trap and draw it in limit set mode
     int trap_depth;           //maximal depth to look for traps

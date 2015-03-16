@@ -99,6 +99,24 @@ bool Ball::is_contained(const cpx& ll, const cpx& ur) {
 }
 
 
+/****************************************************************************
+ * return the angles a1,a2 such that the intersection between this ball
+ * and other is [a1,a2] in this ball
+ * **************************************************************************/
+std::pair<double,double> Ball::intersection_interval(const Ball& other) const {
+  double PI = 3.1415926535897932;
+  cpx diff = other.center - center;
+  double ad = abs(diff);
+  double towards_c2 = atan2(diff.imag(), diff.real());
+  double offset_angle = acos( (ad*ad + radius*radius - other.radius*other.radius) / (2*radius*other.radius) );
+  double a1 = towards_c2 - offset_angle;
+  double a2 = towards_c2 + offset_angle;
+  if (a1<0) a1 += 2*PI;
+  if (a2<0) a2 += 2*PI;
+  return std::make_pair(a1,a2);
+}
+
+
 std::ostream& operator<<(std::ostream& os, const Ball& b) {
   return os << "Ball(" << b.center << "," << b.to_z << "," << b.to_w << "," << b.radius << "," << b.word << "," << b.word_len << ")";
 }
@@ -212,6 +230,25 @@ void Bitword::copy_prefix(const Bitword& b, int n) {
   for (int i=0; i<n; ++i) {
     reverse_set(i, b.reverse_get(i));
   }
+}
+
+
+Bitword Bitword::swapped_suffix(int n, const Bitword& b) const {
+  if (b.len != n) {
+    return Bitword();
+  }
+  std::bitset<64> mask;
+  mask.set();
+  mask <<= n;
+  return Bitword( (w & mask) | (b.w & (~mask)), len);  
+}
+
+int Bitword::to_int() const {
+  std::bitset<64> mask;
+  mask.set();
+  mask <<= len;
+  std::bitset<64> ans = w & (~mask);
+  return ans.to_ulong();
 }
 
 

@@ -201,6 +201,7 @@ bool ifs::contains_half(int d, int& difficulty) {
 
 std::vector<std::pair<Ball,Ball> > ifs::compute_intersection_pairs(int n_depth, 
                                                                    Ball initial_ball, 
+                                                                   bool find_all_depths,
                                                                    int verbose) {
   std::vector<std::pair<Ball,Ball> > ans(0);
   Ball fi = act_on_left(0, initial_ball);
@@ -212,6 +213,9 @@ std::vector<std::pair<Ball,Ball> > ifs::compute_intersection_pairs(int n_depth,
     Ball tg = stack.back().second;
     stack.pop_back();
     if (tf.is_disjoint(tg)) continue;
+    if (find_all_depths && tf.word_len < n_depth) {
+      ans.push_back(std::make_pair(tf,tg));
+    }
     if (tf.word_len == n_depth) {
       ans.push_back(std::make_pair(tf,tg));
       continue;
@@ -261,6 +265,28 @@ double ifs::nonduplicate_first_letter_distance(int n_depth,
   }
   return min_dist;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
