@@ -204,6 +204,10 @@ struct IFSGui {
   int point_coordinates_depth;
   double point_coordinates_theta;
   double point_coordinates_lambda;
+  bool point_conjugacy_check;
+  int point_conjugacy_depth;
+  bool point_conjugacy_certified;
+  double point_conjugacy_certified_epsilon;
   
   //data about path
   IFSPath path;
@@ -274,6 +278,12 @@ struct IFSGui {
   WidgetText W_point_coordinates_depth_label;
   WidgetRightArrow W_point_coordinates_rightarrow;
   WidgetText W_point_coordinates_status;
+  
+  WidgetCheck W_point_conjugacy_check;
+  WidgetLeftArrow W_point_conjugacy_leftarrow;
+  WidgetText W_point_conjugacy_depth_label;
+  WidgetRightArrow W_point_conjugacy_rightarrow;
+  WidgetText W_point_conjugacy_status;
   
   WidgetDraw W_limit_plot;
   WidgetText W_limit_depth_title;
@@ -443,6 +453,9 @@ struct IFSGui {
   void S_point_coordinates(XEvent* e);
   void S_point_coordinates_increase_depth(XEvent* e);
   void S_point_coordinates_decrease_depth(XEvent* e);
+  void S_point_conjugacy(XEvent* e);
+  void S_point_conjugacy_increase_depth(XEvent* e);
+  void S_point_conjugacy_decrease_depth(XEvent* e);
   
   void S_mand_path_create_by_drawing_button(XEvent* e);
   void S_mand_path_create_by_boundary(XEvent* e);

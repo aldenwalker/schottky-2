@@ -1,3 +1,7 @@
+#include <algorithm>
+
+
+
 //computes the angle and scale coordinates of this limit set.  
 //
 //this function finds the boundary of the limit set, expressed as 
@@ -848,6 +852,12 @@ int last_intersecting_ball_before_angle(std::vector<Ball>& balls,
                                         std::vector<int>& intersecting_balls, 
                                         double angle,
                                         int verbose) {
+  if (verbose>0) {
+    std::cout << "Looking amongst intersecting balls for the first one after angle " << angle << "\n";
+    for (int i=0; i<(int)intersecting_balls.size(); ++i) {
+      std::cout << intersecting_balls[i] << " ";
+    } std::cout << "\n";
+  }
   std::vector<double> last_angles(intersecting_balls.size());
   for (int i=0; i<(int)intersecting_balls.size(); ++i) {
     last_angles[i] = balls[current_ball_i].intersection_interval( balls[intersecting_balls[i]] ).second;
@@ -872,7 +882,24 @@ int next_intersecting_ball_after_ball(std::vector<Ball>& balls,
                                       int prev_ball_i, 
                                       std::vector<int>& intersecting_balls,
                                       int verbose) {
-  return 0;
+  if (verbose>0) {
+    std::cout << "Looking amongst intersecting balls for the first one after " << prev_ball_i << "\n";
+    for (int i=0; i<(int)intersecting_balls.size(); ++i) {
+      std::cout << intersecting_balls[i] << " ";
+    } std::cout << "\n";
+  }
+  double prev_angle = balls[current_ball_i].intersection_interval( balls[prev_ball_i] ).second;
+  std::vector<double> first_angles(intersecting_balls.size());
+  for (int i=0; i<(int)intersecting_balls.size(); ++i) {
+    first_angles[i] = balls[current_ball_i].intersection_interval( balls[intersecting_balls[i]] ).first;
+  }
+  int closest_first_angle_i = 0;
+  for (int i=1; i<(int)first_angles.size(); ++i) {
+    if (cyclically_ordered( prev_angle, first_angles[i], first_angles[closest_first_angle_i] )) {
+      closest_first_angle_i = i;
+    }
+  }
+  return intersecting_balls[closest_first_angle_i];
 }
 
 
@@ -883,36 +910,56 @@ int next_intersecting_ball_after_ball(std::vector<Ball>& balls,
 
 /****************************************************************************
 * compute boundary balls not using a trap grid
+* this function will always start with the first (top) f-ball
 ****************************************************************************/
 void non_grid_ball_boundary_indices(std::vector<int>& boundary, 
                                     std::vector<Ball>& balls, 
                                     std::vector<std::pair<Ball,Ball> >& intersection_pairs,
                                     int verbose) {
   boundary.resize(0);
+  int ball_depth = balls[0].word_len;
   
   //find the ball with the greatest x coord 
   int max_x_ball_i = 0;
   for (int i=0; i<(int)balls.size(); ++i) {
     if (balls[i].center.real() > balls[max_x_ball_i].center.real()) {
-      max_x_ball_i = balls[i].center.real();
+      max_x_ball_i = i;
     }
   }
+  
+  if (verbose>0) {
+    std::cout << "Finding boundary ball indices\n";
+    std::cout << "Starting ball (" << max_x_ball_i << "," << Bitword(max_x_ball_i, ball_depth) << "): " << balls[max_x_ball_i] << "\n";
+  } 
   
   //so balls[max_x_ball_i] must have angle 0 exposed
   int current_ball_i = max_x_ball_i;
   std::vector<int> intersecting_balls = balls_which_intersect_ball(balls[current_ball_i], intersection_pairs);
   //get the ball which is previous in the boundary
-  int prev_ball_i = last_intersecting_ball_before_angle(balls, current_ball_i, intersecting_balls, 0.0);  
+  int prev_ball_i = last_intersecting_ball_before_angle(balls, current_ball_i, intersecting_balls, 0.0,verbose);  
   int next_ball_i;
   
   while (true) {
+  
+    if (verbose>0) {
+      std::cout << "Prev ball: " << prev_ball_i << ", " << Bitword(prev_ball_i, ball_depth) << "\n";
+      std::cout << "Current ball: " << current_ball_i << ", " << Bitword(current_ball_i, ball_depth) << "\n";
+    }
+    
     //get the next ball after the previous one
-    next_ball_i = next_intersecting_ball_after_ball(balls, current_ball_i, prev_ball_i, intersecting_balls);
+    next_ball_i = next_intersecting_ball_after_ball(balls, current_ball_i, prev_ball_i, intersecting_balls, verbose);
+    
+    if (verbose>0) {
+      std::cout << "Next ball: " << next_ball_i << ", " << Bitword(next_ball_i, ball_depth) << "\n";
+    }
     
     //we might have looped around
     if (boundary.size() > 2 &&
         current_ball_i == boundary[0] &&
         next_ball_i == boundary[1]) {
+      if (verbose>0) {
+        std::cout << "We've looped\n";
+      }
       break;
     }
     
@@ -924,8 +971,16 @@ void non_grid_ball_boundary_indices(std::vector<int>& boundary,
     current_ball_i = next_ball_i;
     
     //compute the intersecting balls
-    intersecting_balls = balls_which_intersect_ball(balls[current_ball_i], intersection_pairs);
+    intersecting_balls = balls_which_intersect_ball(balls[current_ball_i], intersection_pairs, verbose);
   }
+  
+  //we *always* start with a g-ball (maximal x-coord), 
+  //so it suffices to scan until we find an f-ball, and rotate the 
+  //list to start there
+  int f_ball_i=0;
+  while (balls[boundary[f_ball_i]].last_gen_index() == 1) f_ball_i++;
+  
+  std::rotate(boundary.begin(), boundary.begin() + f_ball_i, boundary.end());
   
 }
 
@@ -946,6 +1001,10 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   if (!temp_IFS.minimal_enclosing_radius(min_r)) return false;
   if (!temp_IFS.circ_connected(min_r)) return false;
   
+  if (verbose>0) {
+    std::cout << "Certifying linear conjugacy at " << z << "\n";
+  }
+  
   //compute the balls, plus the pairs of balls which touch
   Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
   std::vector<Ball> balls(0);
@@ -953,6 +1012,13 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   
   //compute the intersection pairs
   std::vector<std::pair<Ball,Ball> > intersection_pairs = temp_IFS.compute_intersection_pairs(n_depth, initial_ball, true);
+  
+  if (verbose>0) {
+    std::cout << "Intersection balls:\n";
+    for (int i=0; i<(int)intersection_pairs.size(); ++i) {
+      std::cout << i << ": " << intersection_pairs[i].first << "," << intersection_pairs[i].second << "\n";
+    }
+  }
   
   //a 00 pair means a pair in which one of the balls has duplicate first letters
   //a 01 pair is anything else
@@ -970,6 +1036,8 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
       found_01_pair = true;
     }
   }
+  
+  if (verbose>0) std::cout << "found_00_pair: " << found_00_pair << "\nfound_01_pair: " << found_01_pair << "\n"; 
   
   //if there are both pairs with at least one ball with a 00/11 prefix
   //and pairs with 01/10, then we need to give up
@@ -994,18 +1062,31 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
     //compute epsilon from the distance
     epsilon = d/deriv;
     
+    if (verbose>0) std::cout << "One discontinuity case; d = " << d << "; epsilon = " << epsilon << "\n";
+    
     return true;
   }
   
   //if all the pairs are not 00/11, then we can go
   
+  if (verbose>0) {
+    std::cout << "Two discontinuities case\n";
+  }
+  
   //get the boundary (it is guaranteed to start at the g->f junction)
   std::vector<int> boundary_indices(0);
   std::vector<Ball> boundary_balls(0);
-  non_grid_ball_boundary_indices(boundary_indices, balls, intersection_pairs);
+  non_grid_ball_boundary_indices(boundary_indices, balls, intersection_pairs, verbose-1);
   boundary_balls.resize(boundary_indices.size());
   for (int i=0; i<(int)boundary_indices.size(); ++i) {
     boundary_balls[i] = balls[boundary_indices[i]];
+  }
+  
+  if (verbose>0) {
+    std::cout << "Boundary balls:\n";
+    for (int i=0; i<(int)boundary_balls.size(); ++i) {
+      std::cout << i << " (" << boundary_indices[i] << "): " << boundary_balls[i] << "\n";
+    }
   }
   
   //get the convex hull
@@ -1014,9 +1095,12 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   std::vector<halfspace> ch_halfspaces;
   ball_convex_hull(ch, ch_points, ch_halfspaces, boundary_balls);
   
-  
-  
-  
+  if (verbose>0) {
+    std::cout << "Convex hull:\n";
+    for (int i=0; i<(int)ch.size(); ++i) {
+      std::cout << i << ": " << ch[i] << "\n";
+    }
+  }
   
 
   return true;

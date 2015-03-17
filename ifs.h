@@ -114,6 +114,10 @@ struct Bitword {
     w = W;
     len = L;
   }
+  Bitword (int x, int L) {
+    w = std::bitset<64>(x);
+    len = L;
+  }
   bool operator<(const Bitword& b) const;
   int common_prefix(const Bitword& b) const;
   Bitword prefix(int n) const;

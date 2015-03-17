@@ -1115,6 +1115,30 @@ void IFSGui::S_point_coordinates_decrease_depth(XEvent* e) {
 }
 
 
+void IFSGui::S_point_conjugacy(XEvent* e) {  
+  if (e->type != ButtonPress) return;
+  point_conjugacy_check = !point_conjugacy_check;
+  W_point_conjugacy_check.checked = point_conjugacy_check;
+  W_point_conjugacy_check.redraw();
+  recompute_point_data();
+}
+void IFSGui::S_point_conjugacy_increase_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  ++point_conjugacy_depth;
+  std::stringstream T; T.str(""); T << point_conjugacy_depth;
+  W_point_conjugacy_depth_label.update_text(T.str());
+  recompute_point_data();
+}
+
+void IFSGui::S_point_conjugacy_decrease_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  --point_conjugacy_depth;
+  std::stringstream T; T.str(""); T << point_conjugacy_depth;
+  W_point_conjugacy_depth_label.update_text(T.str());
+  recompute_point_data();
+}
+
+
 
 
 void IFSGui::S_mand_path_create_by_drawing_button(XEvent* e) {
@@ -2452,6 +2476,20 @@ void IFSGui::recompute_point_data() {
     std::cout << "\n";
   }
   W_point_coordinates_status.update_text(T.str());
+  
+  if (!point_conjugacy_check) {
+    T.str(""); T << "(disabled)";
+  } else {
+    double epsilon;
+    T.str("");
+    if (IFS.certify_linear_conjugacy(epsilon, point_conjugacy_depth, 1)) {
+      T << "yes; epsilon = " << epsilon;
+    } else {
+      T << "no";
+    }
+  }
+  W_point_conjugacy_status.update_text(T.str());
+  
 }
 
 
@@ -2850,13 +2888,13 @@ void IFSGui::reset_and_pack_window() {
   int x = (width_rest > height_rest ? height_rest : width_rest);
   
   if (window_mode == MANDELBROT) {
-    main_window_height = x + 140;
+    main_window_height = x + 160;
     main_window_width = x + mand_sidebar_size;
   } else if (window_mode == LIMIT) {
-    main_window_height = x + 140;
+    main_window_height = x + 160;
     main_window_width = x + limit_sidebar_size;
   } else {
-    main_window_height = x + 140;
+    main_window_height = x + 160;
     main_window_width = 2*x + mand_sidebar_size + limit_sidebar_size;
   }
   
@@ -2929,6 +2967,13 @@ void IFSGui::reset_and_pack_window() {
   W_point_coordinates_depth_label = WidgetText(this, T.str(), -1, 20);
   W_point_coordinates_rightarrow = WidgetRightArrow(this, 20, 20, &IFSGui::S_point_coordinates_increase_depth);
   W_point_coordinates_status = WidgetText(this, "initializing", x, 20);
+  
+  W_point_conjugacy_check = WidgetCheck(this, "Conjugacy", 105, 20, point_conjugacy_check, &IFSGui::S_point_conjugacy);
+  W_point_conjugacy_leftarrow = WidgetLeftArrow(this, 20, 20, &IFSGui::S_point_conjugacy_decrease_depth);
+  T.str(""); T << point_conjugacy_depth;
+  W_point_conjugacy_depth_label = WidgetText(this, T.str(), -1, 20);
+  W_point_conjugacy_rightarrow = WidgetRightArrow(this, 20, 20, &IFSGui::S_point_conjugacy_increase_depth);
+  W_point_conjugacy_status = WidgetText(this, "initializing", x, 20);
   
   //if the limit set is shown:
   if (window_mode != MANDELBROT) {
@@ -3192,6 +3237,11 @@ void IFSGui::reset_and_pack_window() {
   pack_widget_upper_right(&W_point_coordinates_leftarrow, &W_point_coordinates_depth_label);
   pack_widget_upper_right(&W_point_coordinates_depth_label, &W_point_coordinates_rightarrow);
   pack_widget_upper_right(&W_point_coordinates_rightarrow, &W_point_coordinates_status);
+  pack_widget_upper_right(NULL, &W_point_conjugacy_check);
+  pack_widget_upper_right(&W_point_conjugacy_check, &W_point_conjugacy_leftarrow);
+  pack_widget_upper_right(&W_point_conjugacy_leftarrow, &W_point_conjugacy_depth_label);
+  pack_widget_upper_right(&W_point_conjugacy_depth_label, &W_point_conjugacy_rightarrow);
+  pack_widget_upper_right(&W_point_conjugacy_rightarrow, &W_point_conjugacy_status);
   
   
   
@@ -3311,6 +3361,8 @@ void IFSGui::launch(IFSWindowMode m, const cpx& c) {
   point_trap_words.resize(0);
   point_coordinates_check = false;
   point_coordinates_depth = 12;
+  point_conjugacy_check = false;
+  point_conjugacy_depth = 12;
   
   currently_drawing_path = false;
   

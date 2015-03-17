@@ -105,20 +105,26 @@ bool Ball::is_contained(const cpx& ll, const cpx& ur) {
  * **************************************************************************/
 std::pair<double,double> Ball::intersection_interval(const Ball& other) const {
   double PI = 3.1415926535897932;
+  //std::cout << "Finding angle interval between balls:\n" << *this << "\n" << other << "\n";
   cpx diff = other.center - center;
   double ad = abs(diff);
   double towards_c2 = atan2(diff.imag(), diff.real());
-  double offset_angle = acos( (ad*ad + radius*radius - other.radius*other.radius) / (2*radius*other.radius) );
+  //std::cout << "towards other: " << diff << " dist: " << ad << " angle: " << towards_c2 << "\n";
+  //std::cout << "radii: " << radius << " " << other.radius << "\n";
+  //std::cout << "asking for acos of: " << (ad*ad + radius*radius - other.radius*other.radius) / (2.0*radius*ad) << "\n";
+  double offset_angle = acos( (ad*ad + radius*radius - other.radius*other.radius) / (2.0*radius*ad) );
+  //std::cout << "offset angle: " << offset_angle << "\n";
   double a1 = towards_c2 - offset_angle;
   double a2 = towards_c2 + offset_angle;
   if (a1<0) a1 += 2*PI;
   if (a2<0) a2 += 2*PI;
+  //std::cout << "final angles: " << a1 << " " << a2 << "\n";
   return std::make_pair(a1,a2);
 }
 
 
 std::ostream& operator<<(std::ostream& os, const Ball& b) {
-  return os << "Ball(" << b.center << "," << b.to_z << "," << b.to_w << "," << b.radius << "," << b.word << "," << b.word_len << ")";
+  return os << "Ball(" << b.center << "," << b.to_z << "," << b.to_w << "," << b.radius << "," << Bitword(b.word,b.word_len) << "," << b.word_len << ")";
 }
 
 
