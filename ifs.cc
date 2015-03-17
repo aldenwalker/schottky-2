@@ -141,6 +141,19 @@ int Bitword::constant_prefix_size(int p) const {
   return i;
 }
 
+//take the last letter of the prefix of length n, and see how 
+//long that repeats (the initial letter is not included in this number)
+int Bitword::continuance_of_prefix_last_letter(int prefix_n) const {
+  if (prefix_n == 0) return -1;
+  int ell = 0;
+  while (prefix_n + ell < len && this->reverse_get(prefix_n+ell) == this->reverse_get(prefix_n-1)) {
+    ++ell;
+  }
+  return ell;
+}
+
+
+
 Bitword Bitword::prefix(int n) const {
   std::string s = w.to_string();
   s = s.substr(64-len, n);

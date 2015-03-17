@@ -986,6 +986,25 @@ void non_grid_ball_boundary_indices(std::vector<int>& boundary,
 
 
 /**************************************************************************
+ * find the peak of a discrete function
+ * ************************************************************************/
+int find_integer_peak(std::vector<int>& L) {
+  int last_increase = -1;
+  int last_decrease = -1;
+  for (int i=0; i<(int)L.size(); ++i) {
+    if ( L[i] > L[i+1] ) {
+      last_decrease = i;
+      if (last_increase > 0) {
+        return last_increase + (last_increase + last_decrease)/2;
+      }
+    } else if ( L[i] < L[i+1] ) {
+      last_increase = i;
+    }
+  }
+  return -1;
+}
+
+/**************************************************************************
  * functions to certify that the linear semiconjugacy is a conjugacy
  **************************************************************************/
 bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
@@ -1114,6 +1133,7 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   // w = W e^m (1-e)*
   // a = 0*
   //where W begins with fewer than k 1's, and e = 0 or 1
+  //the entire range along y,z,w must be certified to have the prefix We
   
   //first find the location of the largest number of 
   //1's -- i.e. a ball with prefix 1^k such that every ball it touches 
@@ -1147,10 +1167,99 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
     std::cout << "Found maximal 1s prefix: " << boundary_balls[max_num_1s_i] << "; k = " << k << "\n";
   }
   
+  //now we need to scan through, and for each prefix W, try to find three patterns 
+  //y,z,w as desired 
   
+  //find the beginning of the search interval; this will be the first 
+  //ball which doesn't touch anything with the prefix 1^k
+  int search_interval_start_i = max_num_1s_i;
+  while (true) {
+    std::vector<int> intersecting_balls = balls_which_intersect_ball(boundary_balls[search_interval_start_i],
+                                                                     intersection_pairs, 
+                                                                     verbose);
+    bool ok=true;
+    for (int i=0; i<(int)intersecting_balls.size(); ++i) {
+      if (Bitword(balls[intersecting_balls[i]].word, 
+                  balls[intersecting_balls[i]].word_len).constant_prefix_size(1) >= k) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) break;
+    if (search_interval_start_i == (int)boundary_bitwords.size()-1) return false;
+    ++search_interval_start_i;
+  }
   
+  if (verbose>0) {
+    std::cout << "Found search start index: " << search_interval_start_i << " (in balls: " << boundary_indices[search_interval_start_i] << ")\n";
+  }
+  
+  int current_prefix_length = 2;
+  while (true) {
+    if (verbose>0) {
+      std::cout << "Prefix length: " << current_prefix_length << "\n";
+    }
+    
+    //scan through the list and find all prefixes of the given length
+    //the prefix includes everything of the form We (including the e)
+    int j=search_interval_start_i;
+    std::vector<Bitword> prefixes(0);
+    std::vector<std::pair<int,int> > prefix_ranges(0);  //this is [start,stop)
+    while (true) {
+      //check if we are done
+      if (j >= (int)boundary_bitwords.size()) break;
+      //get the prefix
+      prefixes.push_back(boundary_bitwords[j].prefix(current_prefix_length));
+      prefix_ranges.push_back(std::make_pair(j, -1));
+      //go until the prefix isn't the prefix
+      while (j < boundary_bitwords.size() && boundary_bitwords[j].prefix(current_prefix_length) == prefixes.back()) ++j;
+      prefix_ranges.back().second = j;
+    }
+    if (verbose>0) {
+      std::cout << "Found prefixes:\n";
+      for (int i=0; i<(int)prefixes.size(); ++i) {
+        std::cout << i << ": " << prefixes[i] << " range: " << prefix_ranges[i].first << " " << prefix_ranges[i].second << "\n";
+      }
+    }
+    //for each prefix, find the list of numbers of e's which occur
+    //we need it to be <=m, then >m, then <=m again
+    bool some_ok_prefix = false;
+    for (int i=0; i<(int)prefixes.size(); ++i) {
+      int prefix_range_length = prefix_ranges[i].second - prefix_ranges[i].first;
+      //if the range length is at most 8, it cannot possibly work
+      if (prefix_range_length <= 8) continue;
+      some_ok_prefix = true;
+      
+      //get how many e's there are in each word
+      std::vector<int> e_lengths(prefix_range_length);
+      for (int j=0; j<(int)prefix_range_length; ++j) {
+        e_lengths[j] = boundary_bitwords[prefix_ranges[i].first+j].continuance_of_prefix_last_letter(current_prefix_length);
+      }
+      if (verbose>0) {
+        std::cout << "For prefix " << i << ": " << prefixes[i] << "\n";
+        std::cout << "e lengths:\n";
+        for (int j=0; j<(int)e_lengths.size(); ++j) {
+          std::cout << e_lengths[j] << " ";
+        }
+        std::cout << "\n";
+      }
+      
+      //find the peak
+      int peak_index = find_integer_peak(e_lengths);
+      if (verbose>0) std::cout << "Found the peak: " << peak_index << "\n";
+      
+      if (peak_index < 0) {
+        break;
+      }
+      
+        
+      
+    }
+    if (!some_ok_prefix) break;
+    ++current_prefix_length;
+  }
 
-  return true;
+  return false;
 }
 
 
