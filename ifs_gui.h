@@ -170,22 +170,26 @@ struct IFSGui {
   int mand_set_C_depth;
   bool mand_theta;
   int mand_theta_depth;
+  bool mand_conjugacy;
+  int mand_conjugacy_depth;
   cpx mand_pixel_group_to_cpx(const Point2d<int>& p);
   Point2d<int> mand_cpx_to_pixel_group(const cpx& c);
   cpx mand_pixel_to_cpx(const Point2d<int>& p);
   Point2d<int> mand_cpx_to_pixel(const cpx& c);
-  int mand_get_color(PointNd<6,int>& p);
+  int mand_get_color(PointNd<7,int>& p);
   int mand_output_picture_size;
   
 
   //data for mandelbrot
-  std::vector<std::vector<PointNd<6,int> > > mand_data_grid;
+  std::vector<std::vector<PointNd<7,int> > > mand_data_grid;
   bool mand_grid_connected_valid;
   bool mand_grid_contains_half_valid;
   bool mand_grid_trap_valid;
   bool mand_grid_dirichlet_valid;
   bool mand_grid_set_C_valid;
   bool mand_grid_theta_valid;
+  bool mand_grid_conjugacy_valid;
+  
   
   //data about highlighted point
   bool point_connected_check;
@@ -344,6 +348,10 @@ struct IFSGui {
   WidgetLeftArrow W_mand_theta_depth_leftarrow;
   WidgetText W_mand_theta_depth_label;
   WidgetRightArrow W_mand_theta_depth_rightarrow;
+  WidgetCheck W_mand_conjugacy_check;
+  WidgetLeftArrow W_mand_conjugacy_depth_leftarrow;
+  WidgetText W_mand_conjugacy_depth_label;
+  WidgetRightArrow W_mand_conjugacy_depth_rightarrow;
   WidgetText W_mand_mouse_label;
   WidgetText W_mand_mouse_X;
   WidgetText W_mand_mouse_Y;
@@ -431,6 +439,9 @@ struct IFSGui {
   void S_mand_theta(XEvent* e);
   void S_mand_theta_decrease_depth(XEvent* e);
   void S_mand_theta_increase_depth(XEvent* e);
+  void S_mand_conjugacy(XEvent* e);
+  void S_mand_conjugacy_decrease_depth(XEvent* e);
+  void S_mand_conjugacy_increase_depth(XEvent* e);
   void S_mand_output_window(XEvent* e);
   void S_mand_output_picture(XEvent* e);
   void S_mand_output_picture_increase_size(XEvent* e);

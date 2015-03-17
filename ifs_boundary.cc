@@ -988,29 +988,56 @@ void non_grid_ball_boundary_indices(std::vector<int>& boundary,
 /**************************************************************************
  * find the peak of a discrete function
  * ************************************************************************/
-int find_integer_peak(std::vector<int>& L) {
+void find_integer_peak(std::vector<std::pair<int,bool> >& L, int& p1, int& p2, int& p3) {
+  //pare the list down
+  std::vector<std::pair<int,int> > true_L(0);
+  for (int i=0; i<(int)L.size(); ++i) {
+    if (L[i].second) {
+      true_L.push_back(std::make_pair(L[i].first, i));
+    }
+  }
   int last_increase = -1;
   int last_decrease = -1;
-  for (int i=0; i<(int)L.size(); ++i) {
-    if ( L[i] > L[i+1] ) {
+  for (int i=0; i<(int)true_L.size()-1; ++i) {
+    if ( true_L[i].first > true_L[i+1].first ) {
       last_decrease = i;
-      if (last_increase > 0) {
-        return last_increase + (last_increase + last_decrease)/2;
+      if (last_increase >= 0) {
+        p1 = true_L[last_increase].second;
+        //std::cout << last_increase << " " << last_decrease << " " << last_increase + 1 + (last_decrease - last_increase)/2;
+        p2 = true_L[ last_increase + 1 + (last_decrease - last_increase)/2 ].second;
+        p3 = true_L[last_decrease+1].second;
+        return;
       }
-    } else if ( L[i] < L[i+1] ) {
+    } else if ( true_L[i].first < true_L[i+1].first ) {
       last_increase = i;
     }
   }
-  return -1;
+  p1 = p2 = p3 = -1;
+  return;
 }
 
 /**************************************************************************
+ * check that all the balls have the given prefix
+ **************************************************************************/
+bool check_ball_prefixes(std::vector<Ball>& balls, 
+                         std::vector<int>& L,
+                         Bitword& b) {
+  for (int m=0; m<(int)L.size(); ++m) {
+    if (Bitword(balls[L[m]].word,
+                balls[L[m]].word_len).prefix(b.len) != b) {
+      return false;
+    }
+  }
+  return true;
+}
+/**************************************************************************
  * functions to certify that the linear semiconjugacy is a conjugacy
  **************************************************************************/
-bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
+bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, int verbose) {
 
   if (abs(z) > 1.0/sqrt(2.0)) return false;
   if (z.real() < 0 || z.imag() < 0) return false;
+  if (arg(z) < 0.05) return false;
 
   ifs temp_IFS;
   temp_IFS.set_params(z,z);
@@ -1230,29 +1257,63 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
       if (prefix_range_length <= 8) continue;
       some_ok_prefix = true;
       
-      //get how many e's there are in each word
-      std::vector<int> e_lengths(prefix_range_length);
+      //get how many e's there are in each word; the bool indicates whether it's certified
+      std::vector<std::pair<int,bool> > e_lengths(prefix_range_length);
       for (int j=0; j<(int)prefix_range_length; ++j) {
-        e_lengths[j] = boundary_bitwords[prefix_ranges[i].first+j].continuance_of_prefix_last_letter(current_prefix_length);
+        int bd_ind = prefix_ranges[i].first+j;
+        e_lengths[j].first = boundary_bitwords[bd_ind].continuance_of_prefix_last_letter(current_prefix_length);
+        if (!rigorous) {
+          e_lengths[j].second = true;
+        } else {
+          std::vector<int> intersecting_balls = balls_which_intersect_ball(boundary_balls[bd_ind],
+                                                                         intersection_pairs,
+                                                                         verbose);
+          Bitword full_prefix = Bitword(boundary_balls[bd_ind].word,
+                                        boundary_balls[bd_ind].word_len).prefix(current_prefix_length + e_lengths[j].first + 1);
+          e_lengths[j].second = check_ball_prefixes(balls, intersecting_balls, full_prefix);          
+        }
       }
       if (verbose>0) {
         std::cout << "For prefix " << i << ": " << prefixes[i] << "\n";
         std::cout << "e lengths:\n";
         for (int j=0; j<(int)e_lengths.size(); ++j) {
-          std::cout << e_lengths[j] << " ";
+          std::cout << e_lengths[j].first << (e_lengths[j].second ? "* " : " ");
         }
         std::cout << "\n";
       }
       
       //find the peak
-      int peak_index = find_integer_peak(e_lengths);
-      if (verbose>0) std::cout << "Found the peak: " << peak_index << "\n";
-      
-      if (peak_index < 0) {
-        break;
+      int p1, p2, p3;
+      find_integer_peak(e_lengths, p1, p2, p3);
+      if (verbose>0) std::cout << "Found the peak: " << p1 << " " << p2 << " " << p3 << "\n";
+      if (p1 < 0) {
+        continue;
+      } 
+      if (!rigorous) {
+        epsilon = 0;
+        return true;
       }
       
-        
+      //check that the entire interval along the peak 
+      //only touches balls with the desired prefix
+      int pb1 = prefix_ranges[i].first + p1;
+      int pb2 = prefix_ranges[i].first + p2;
+      int pb3 = prefix_ranges[i].first + p3;
+      bool good_interval = true;
+      for (int j=pb1; j<=pb3; ++j) {
+        std::vector<int> intersecting_balls = balls_which_intersect_ball(boundary_balls[j],
+                                                                         intersection_pairs,
+                                                                         verbose);
+        if (!check_ball_prefixes(balls, intersecting_balls, prefixes[i])) {
+          good_interval = false;
+          break;
+        }
+      }
+      if (verbose>0) std::cout << "The interval is: " << (good_interval ? "good\n" : "bad\n");
+      if (!good_interval) continue;
+      
+      return true;
+      
       
     }
     if (!some_ok_prefix) break;

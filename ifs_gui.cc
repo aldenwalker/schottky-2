@@ -936,6 +936,37 @@ void IFSGui::S_mand_theta_increase_depth(XEvent* e) {
   if (mand_theta) draw_mand();
 }
 
+
+void IFSGui::S_mand_conjugacy(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  mand_conjugacy = !mand_conjugacy;
+  W_mand_conjugacy_check.checked = mand_conjugacy;
+  W_mand_conjugacy_check.redraw();
+  draw_mand();
+}
+
+void IFSGui::S_mand_conjugacy_decrease_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  --mand_conjugacy_depth;
+  std::stringstream T;
+  T.str(""); T << mand_conjugacy_depth;
+  W_mand_conjugacy_depth_label.update_text(T.str());
+  mand_grid_conjugacy_valid = false;
+  if (mand_conjugacy) draw_mand();
+}
+
+void IFSGui::S_mand_conjugacy_increase_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  ++mand_conjugacy_depth;
+  std::stringstream T;
+  T.str(""); T << mand_conjugacy_depth;
+  W_mand_conjugacy_depth_label.update_text(T.str());
+  mand_grid_conjugacy_valid = false;
+  if (mand_conjugacy) draw_mand();
+}
+
+
+
 void IFSGui::S_mand_output_window(XEvent* e) {
   if (e->type != ButtonPress) return;
   int old_prec = std::cout.precision();
@@ -1961,7 +1992,7 @@ Point2d<int> IFSGui::mand_cpx_to_pixel(const cpx& c) {
                        W_mand_plot.height - ((c.imag() - mand_ll.imag()) / mand_pixel_width) );
 }
 
-int IFSGui::mand_get_color(PointNd<6,int>& p) {
+int IFSGui::mand_get_color(PointNd<7,int>& p) {
 /*
   if (mand_trap && p.z > 0) { //use the trap color
     return p.z;
@@ -1985,6 +2016,8 @@ int IFSGui::mand_get_color(PointNd<6,int>& p) {
     return p.y;
   } else if (mand_theta && p[5] > 0) {
     return p[5];
+  } else if (mand_conjugacy && p[6] >0) {
+    return p[6];
   } else if (mand_connected && p.x >= 0) {
     return p.x*0x000001;
   } else if (mand_dirichlet && p.w >= 0) {
@@ -2111,6 +2144,14 @@ void IFSGui::draw_mand() {
           mand_data_grid[i][j][5] = (int)((th+0.6)*100000.0);
         } else {
           mand_data_grid[i][j][5] = -1;
+        }
+      }
+      if (mand_conjugacy && !mand_grid_conjugacy_valid) {
+        double epsilon;
+        if (temp_IFS.certify_linear_conjugacy(epsilon, mand_conjugacy_depth, false, 0)) {
+          mand_data_grid[i][j][6] = get_rgb_color(0,1,0);
+        } else {
+          mand_data_grid[i][j][6] = -1;
         }
       }
       
@@ -2334,6 +2375,7 @@ void IFSGui::mand_recenter() {
   mand_grid_dirichlet_valid = false;
   mand_grid_set_C_valid = false;
   mand_grid_theta_valid = false;
+  mand_grid_conjugacy_valid = false;
   draw_mand();
 }
 
@@ -2343,7 +2385,7 @@ void IFSGui::mand_reset_mesh() {
   mand_num_pixel_groups = W_mand_plot.width / mand_pixel_group_size;
   mand_data_grid.resize(mand_num_pixel_groups);
   for (int i=0; i<mand_num_pixel_groups; ++i) {
-    mand_data_grid[i] = std::vector<PointNd<6,int> >(mand_num_pixel_groups, PointNd<6,int>(-1));
+    mand_data_grid[i] = std::vector<PointNd<7,int> >(mand_num_pixel_groups, PointNd<7,int>(-1));
   }
   mand_grid_connected_valid = false;
   mand_grid_contains_half_valid = false;
@@ -2351,6 +2393,7 @@ void IFSGui::mand_reset_mesh() {
   mand_grid_dirichlet_valid = false;
   mand_grid_set_C_valid = false;
   mand_grid_theta_valid = false;
+  mand_grid_conjugacy_valid = false;
 }
 
 
@@ -2482,7 +2525,7 @@ void IFSGui::recompute_point_data() {
   } else {
     double epsilon;
     T.str("");
-    if (IFS.certify_linear_conjugacy(epsilon, point_conjugacy_depth, 1)) {
+    if (IFS.certify_linear_conjugacy(epsilon, point_conjugacy_depth, true, 1)) {
       T << "yes; epsilon = " << epsilon;
     } else {
       T << "no";
@@ -3073,6 +3116,11 @@ void IFSGui::reset_and_pack_window() {
     T.str(""); T << mand_theta_depth;
     W_mand_theta_depth_label = WidgetText(this, T.str(), -1, 20);
     W_mand_theta_depth_rightarrow = WidgetRightArrow(this, 20, 20, &IFSGui::S_mand_theta_increase_depth);
+    W_mand_conjugacy_check = WidgetCheck(this, "Conjugacy:", 105, 20, mand_set_C, &IFSGui::S_mand_conjugacy);
+    W_mand_conjugacy_depth_leftarrow = WidgetLeftArrow(this, 20, 20, &IFSGui::S_mand_conjugacy_decrease_depth);
+    T.str(""); T << mand_conjugacy_depth;
+    W_mand_conjugacy_depth_label = WidgetText(this, T.str(), -1, 20);
+    W_mand_conjugacy_depth_rightarrow = WidgetRightArrow(this, 20, 20, &IFSGui::S_mand_conjugacy_increase_depth);
     
     W_mand_mouse_label = WidgetText(this, "Mouse:", 50, 20);
     W_mand_mouse_X = WidgetText(this, "Re: initializing", 200, 20);
@@ -3165,6 +3213,10 @@ void IFSGui::reset_and_pack_window() {
     pack_widget_upper_right(&W_mand_theta_check, &W_mand_theta_depth_leftarrow);
     pack_widget_upper_right(&W_mand_theta_depth_leftarrow, &W_mand_theta_depth_label);
     pack_widget_upper_right(&W_mand_theta_depth_label, &W_mand_theta_depth_rightarrow);
+    pack_widget_upper_right(&W_mand_plot, &W_mand_conjugacy_check);
+    pack_widget_upper_right(&W_mand_theta_check, &W_mand_conjugacy_depth_leftarrow);
+    pack_widget_upper_right(&W_mand_conjugacy_depth_leftarrow, &W_mand_conjugacy_depth_label);
+    pack_widget_upper_right(&W_mand_conjugacy_depth_label, &W_mand_conjugacy_depth_rightarrow);
     pack_widget_upper_right(&W_mand_plot, &W_mand_mouse_label);
     pack_widget_upper_right(&W_mand_plot, &W_mand_mouse_X);
     pack_widget_upper_right(&W_mand_plot, &W_mand_mouse_Y);
@@ -3345,6 +3397,8 @@ void IFSGui::launch(IFSWindowMode m, const cpx& c) {
   mand_set_C_depth = 10;
   mand_theta = false;
   mand_theta_depth = 8;
+  mand_conjugacy = false;
+  mand_conjugacy_depth = 8;
   mand_output_picture_size = 1000;
   
   point_connected_check = true;

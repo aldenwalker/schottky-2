@@ -10,6 +10,7 @@
 #include "point.h"
 
 bool cyclically_ordered(double a, double b, double c);
+void find_integer_peak(std::vector<std::pair<int,bool> >& L, int& p1, int& p2, int& p3);
 
 /*************************************************************************
  * convex hull computational geometry stuff
@@ -260,7 +261,7 @@ class ifs{
     bool compute_boundary_space(BoundarySpace& BS,
                                 int n_depth,
                                 int lam_depth);
-    bool certify_linear_conjugacy(double& epsilon, int n_depth, int verbose);
+    bool certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, int verbose);
     
     
     //mandelbrot mode
