@@ -1016,7 +1016,7 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   if (verbose>0) {
     std::cout << "Intersection balls:\n";
     for (int i=0; i<(int)intersection_pairs.size(); ++i) {
-      std::cout << i << ": " << intersection_pairs[i].first << "," << intersection_pairs[i].second << "\n";
+      std::cout << i << ": " << intersection_pairs[i].first << ",\n   " << intersection_pairs[i].second << "\n";
     }
   }
   
@@ -1076,10 +1076,13 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
   //get the boundary (it is guaranteed to start at the g->f junction)
   std::vector<int> boundary_indices(0);
   std::vector<Ball> boundary_balls(0);
+  std::vector<Bitword> boundary_bitwords(0);
   non_grid_ball_boundary_indices(boundary_indices, balls, intersection_pairs, verbose-1);
   boundary_balls.resize(boundary_indices.size());
+  boundary_bitwords.resize(boundary_indices.size());
   for (int i=0; i<(int)boundary_indices.size(); ++i) {
     boundary_balls[i] = balls[boundary_indices[i]];
+    boundary_bitwords[i] = Bitword(boundary_balls[i].word, boundary_balls[i].word_len);
   }
   
   if (verbose>0) {
@@ -1101,6 +1104,50 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, int verbose) {
       std::cout << i << ": " << ch[i] << "\n";
     }
   }
+  
+  //since we have restricted the argument of the parameter, we only need the 
+  //following: cyclically in order x,y,z,w,a, where x,y,z,w,a are certified 
+  //prefixes of points on the boundary and:
+  // x = 1^k*
+  // y = W e^m (1-e)*
+  // z = W e^(m+1) *
+  // w = W e^m (1-e)*
+  // a = 0*
+  //where W begins with fewer than k 1's, and e = 0 or 1
+  
+  //first find the location of the largest number of 
+  //1's -- i.e. a ball with prefix 1^k such that every ball it touches 
+  //also has prefix 1^k; it'll probably be correct just to 
+  //find the ball with the largest prefix of 1's and use that
+  int max_num_1s_i = 0;
+  int max_num_1s = 0;
+  for (int i=1; i<(int)boundary_bitwords.size(); ++i) {
+    int num_1s = boundary_bitwords[i].constant_prefix_size(1);
+    if (num_1s > max_num_1s) {
+      max_num_1s = num_1s;
+      max_num_1s_i = i;
+    }
+  }
+  //get all the balls which intersect the maximal-1 ball
+  std::vector<int> max_num_1s_intersectors = balls_which_intersect_ball(boundary_balls[max_num_1s_i], 
+                                                                        intersection_pairs, 
+                                                                        verbose);
+  //find the minimal size of the 1s prefix of these balls
+  int k=max_num_1s;
+  for (int i=0; i<(int)max_num_1s_intersectors.size(); ++i) {
+    Bitword b(balls[max_num_1s_intersectors[i]].word, 
+              balls[max_num_1s_intersectors[i]].word_len);
+    int this_k = b.constant_prefix_size(1);
+    if (this_k < k) {
+      k = this_k;
+    }
+  }
+  
+  if (verbose>0) {
+    std::cout << "Found maximal 1s prefix: " << boundary_balls[max_num_1s_i] << "; k = " << k << "\n";
+  }
+  
+  
   
 
   return true;

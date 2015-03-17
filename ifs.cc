@@ -134,6 +134,13 @@ bool Bitword::operator<(const Bitword& b) const {
   return w.to_ulong() < b.w.to_ulong();
 }
 
+
+int Bitword::constant_prefix_size(int p) const {
+  int i=0;
+  while (i < len && this->reverse_get(i) == (p&1)) i++;
+  return i;
+}
+
 Bitword Bitword::prefix(int n) const {
   std::string s = w.to_string();
   s = s.substr(64-len, n);

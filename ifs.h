@@ -120,6 +120,7 @@ struct Bitword {
   }
   bool operator<(const Bitword& b) const;
   int common_prefix(const Bitword& b) const;
+  int constant_prefix_size(int p) const;
   Bitword prefix(int n) const;
   Bitword suffix(int n) const;
   std::string str() const;
