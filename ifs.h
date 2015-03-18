@@ -101,6 +101,7 @@ int next_intersecting_ball_after_ball(std::vector<Ball>& balls,
                                       std::vector<int>& intersecting_balls,
                                       int verbose=0);
 
+
 /**************************************************************************
  * a bit word
  **************************************************************************/
@@ -141,6 +142,9 @@ struct Bitword {
 
 std::ostream& operator<<(std::ostream& os, const Bitword& b);
 
+
+double matching_prefix_radius(Bitword& b,
+                              int prefix_len);
 
 /****************************************************************************
  * a boundary space 

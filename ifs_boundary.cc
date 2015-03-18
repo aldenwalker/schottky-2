@@ -1016,6 +1016,29 @@ void find_integer_peak(std::vector<std::pair<int,bool> >& L, int& p1, int& p2, i
   return;
 }
 
+/*************************************************************************
+ * find the closest ball which doesn't share a prefix with the specified
+ * ball of the given length
+ *************************************************************************/
+double matching_prefix_radius(Bitword& b, 
+                              int prefix_len) {
+  //suppose that the ball starts with 1
+  //then we need to find the distance to any 0 ball
+  //then recursively we need to find the distance 
+  //between this ball shifted left (wlog a 0 ball) and the 1 balls, etc
+  return 1.0;
+}
+
+
+
+
+
+
+
+
+
+
+
 /**************************************************************************
  * check that all the balls have the given prefix
  **************************************************************************/
@@ -1311,6 +1334,69 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
       }
       if (verbose>0) std::cout << "The interval is: " << (good_interval ? "good\n" : "bad\n");
       if (!good_interval) continue;
+      
+      //we now have a rigorous conjugacy
+      //we just need to determine the epsilon
+      //for each of the three key balls; we need to get the distance 
+      //from any ball that doesn't have the same prefix, say x1,x2,x3
+      //and if the interval between convex hull points is X, X', pb1, pb2, pb3,Y', Y, 
+      //where X' and Y' are last balls which agree with the prefix of pb1 or pb2
+      //then we need to get the distance from any ball in [pb1,Y] from X and 
+      //the distance from any ball in [X,pb3] from Y
+      //and take the minimum
+      
+      //this will always be taking place in the last gap of the convex hull
+      //we need to find out where this is
+      int convex_hull_gap_i=-1;
+      for (int j=0; j<(int)ch.size(); ++j) {
+        if (ch[j] > ch[(j+1)%ch.size()]) {
+          convex_hull_gap_i = j;
+          break;
+        }
+      }
+      std::pair<int,int> convex_hull_boundary_balls = std::make_pair(ch[convex_hull_gap_i], ch[(convex_hull_gap_i+1)%ch.size()]);
+      
+      if (verbose>0) {
+        std::cout << "Convex hull gap: " << convex_hull_boundary_balls.first << " " << convex_hull_boundary_balls.second << "\n";
+      }
+        
+      
+      //find the first ball which agrees with pb1 to the appropriate length
+      int pb1_prefix_length = current_prefix_length + e_lengths[p1].first + 1;
+      Bitword pb1_bitword( boundary_balls[pb1].word, boundary_balls[pb1].word_len );
+      Bitword pb1_prefix = pb1_bitword.prefix( pb1_prefix_length ); 
+      if (verbose>0) {
+        std::cout << "Scanning forward from " << convex_hull_boundary_balls.first << " to find prefix " << pb1_prefix << "\n";
+      }
+      std::pair<int,int> safe_interval;
+      int j = convex_hull_boundary_balls.first;
+      while ( pb1_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) < pb1_prefix_length ) ++j;
+      safe_interval.first = j;
+      
+      //and find the last ball which agrees with pb3 to the appropriate length
+      int pb3_prefix_length = current_prefix_length + e_lengths[p3].first + 1;
+      Bitword pb3_bitword( boundary_balls[pb3].word, boundary_balls[pb3].word_len );
+      Bitword pb3_prefix = pb3_bitword.prefix( pb3_prefix_length );
+      j = boundary_balls.size()-1;
+      while ( pb3_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) < pb3_prefix_length ) --j;
+      safe_interval.second = j;
+      if (verbose>0) {
+        std::cout << "Safe interval: " << safe_interval.first << " " << safe_interval.second << "\n";
+      }
+      
+      //compute the distance from each of the three balls to any ball with 
+      //a different prefix
+      int pb2_prefix_length = current_prefix_length + e_lengths[p2].first;  // no +1 ?
+      Bitword pb2_bitword( boundary_balls[pb2].word, boundary_balls[pb2].word_len );
+      Bitword pb2_prefix = pb2_bitword.prefix( pb2_prefix_length );
+      
+      double pb1_distance = matching_prefix_radius(pb1_bitword, pb1_prefix_length);
+      double pb2_distance = matching_prefix_radius(pb2_bitword, pb2_prefix_length);
+      double pb3_distance = matching_prefix_radius(pb3_bitword, pb3_prefix_length);
+      
+      if (verbose>0) {
+        std::cout << "Ball distances: p1: " << pb1_distance << " p2: " << pb2_distance << " p3: " << pb3_distance << "\n";
+      }
       
       return true;
       

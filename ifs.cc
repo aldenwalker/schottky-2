@@ -184,7 +184,7 @@ Bitword Bitword::shift_right(int n, int padding) const {
 
 int Bitword::common_prefix(const Bitword& b) const {
   int p = 0;
-  while (reverse_get(p) == b.reverse_get(p)) ++p;
+  while (p < len && p < b.len && reverse_get(p) == b.reverse_get(p)) ++p;
   return p;
 }
   
