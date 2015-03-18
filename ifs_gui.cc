@@ -2146,9 +2146,13 @@ void IFSGui::draw_mand() {
           mand_data_grid[i][j][5] = -1;
         }
       }
-      if (mand_conjugacy && !mand_grid_conjugacy_valid) {
+      if (mand_conjugacy && !mand_grid_conjugacy_valid && 
+           (! mand_connected || mand_data_grid[i][j].x==-1 || 
+                                (i>0 && mand_data_grid[i-1][j].x==-1) ||
+                                (j>0 && mand_data_grid[i][j+1].x==-1) ||
+                                (i>0&&j>0 && mand_data_grid[i-1][j+1].x==-1)  )) {
         double epsilon;
-        if (temp_IFS.certify_linear_conjugacy(epsilon, mand_conjugacy_depth, false, 0)) {
+        if (temp_IFS.certify_linear_conjugacy(epsilon, mand_conjugacy_depth, true, 0)) {
           mand_data_grid[i][j][6] = get_rgb_color(0,1,0);
         } else {
           mand_data_grid[i][j][6] = -1;
@@ -2215,6 +2219,7 @@ void IFSGui::draw_mand() {
   if (mand_dirichlet && !mand_grid_dirichlet_valid) mand_grid_dirichlet_valid = true;
   if (mand_set_C && !mand_grid_set_C_valid) mand_grid_set_C_valid = true;
   if (mand_theta && !mand_grid_theta_valid) mand_grid_theta_valid = true;
+  if (mand_conjugacy && !mand_grid_conjugacy_valid) mand_grid_conjugacy_valid = true;
   
   //now draw the highlighted point
   Point2d<int> h = mand_cpx_to_pixel(IFS.z);

@@ -1037,7 +1037,7 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
 
   if (abs(z) > 1.0/sqrt(2.0)) return false;
   if (z.real() < 0 || z.imag() < 0) return false;
-  if (arg(z) < 0.05) return false;
+  if (arg(z) < 0.15) return false;
 
   ifs temp_IFS;
   temp_IFS.set_params(z,z);
