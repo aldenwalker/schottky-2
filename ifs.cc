@@ -426,6 +426,15 @@ cpx ifs::apply_bitword(const Bitword& b, cpx x) const {
 }
 
 
+Ball ifs::apply_bitword(const Bitword& bw, const Ball& b) const {
+  Ball ans = b;
+  for (int i=0; i<(int)bw.len; ++i) {
+    ans = act_on_left(bw.get(i), ans);
+  }
+  return ans;
+}
+
+
 double ifs::distance_from_balls(cpx p, const std::vector<Ball>& balls) {
   if (balls.size() == 0) return -1;
   double dist = abs(balls[0].center-p)-balls[0].radius;

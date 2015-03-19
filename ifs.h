@@ -143,8 +143,6 @@ struct Bitword {
 std::ostream& operator<<(std::ostream& os, const Bitword& b);
 
 
-double matching_prefix_radius(Bitword& b,
-                              int prefix_len);
 
 /****************************************************************************
  * a boundary space 
@@ -203,10 +201,13 @@ class ifs{
     Ball act_on_left(int index, const Ball& b) const;
     Ball act_on_right(int index, const Ball& b) const;
     cpx apply_bitword(const Bitword& b, cpx x) const;
+    Ball apply_bitword(const Bitword& bw, const Ball& b) const;
     void compute_next_ball_depth(std::vector<Ball>& balls, int current_depth);
     void compute_balls(std::vector<Ball>& balls, const Ball& ball_seed, int compute_depth);
     void compute_next_ball_depth_right(std::vector<Ball>& balls, int current_depth);
     void compute_balls_right(std::vector<Ball>& balls, const Ball& ball_seed, int compute_depth);
+    double distance_from_other_half(Bitword& b);
+    double matching_prefix_radius(Bitword& b, int prefix_len);
     void box_containing_balls(const std::vector<Ball>& balls, cpx& ll, cpx& ur);
     void refine_balls_into_box(std::vector<Ball>& balls, const cpx& ll, const cpx& ur);
     bool is_ball_disjoint(const Ball& b, const cpx& ll, const cpx& ur);

@@ -1020,24 +1020,30 @@ void find_integer_peak(std::vector<std::pair<int,bool> >& L, int& p1, int& p2, i
  * find the closest ball which doesn't share a prefix with the specified
  * ball of the given length
  *************************************************************************/
-double matching_prefix_radius(Bitword& b, 
-                              int prefix_len) {
+double ifs::matching_prefix_radius(Bitword& b, 
+                                   int prefix_len) {
   //suppose that the ball starts with 1
   //then we need to find the distance to any 0 ball
   //then recursively we need to find the distance 
   //between this ball shifted left (wlog a 0 ball) and the 1 balls, etc
-  return 1.0;
+  if (prefix_len
 }
 
-
-
-
-
-
-
-
-
-
+/*************************************************************************
+ * get the distance from this ball to any ball with a different first letter
+ *************************************************************************/
+double ifs::distance_from_other_half(Bitword& b) {
+  double min_r;
+  minimal_enclosing_radius(min_r);
+  Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
+  Ball test_ball = apply_bitword(b, initial_ball);
+  std::vector<Ball> stack(0);
+  stack.push_back( act_on_left( 1-b.reverse_get(0), initial_ball ) );
+  while (true) {
+  }
+  return min_dist;
+}
+    
 
 /**************************************************************************
  * check that all the balls have the given prefix
