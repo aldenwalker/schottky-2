@@ -128,6 +128,7 @@ struct Bitword {
   Bitword suffix(int n) const;
   std::string str() const;
   Bitword shift_right(int n, int padding) const;
+  int get(int n) const;
   int reverse_get(int n) const;
   void reverse_set(int n, int b);
   cpx apply(cpx z, cpx x) const;
@@ -208,6 +209,9 @@ class ifs{
     void compute_balls_right(std::vector<Ball>& balls, const Ball& ball_seed, int compute_depth);
     double distance_from_other_half(Bitword& b);
     double matching_prefix_radius(Bitword& b, int prefix_len);
+    double distance_between_bitword_sets(const std::vector<Bitword>& B1, 
+                                         const std::vector<Bitword>& B2);
+    std::vector< std::pair<Ball,std::vector<Bitword> > > subdivide_ball_with_bitwords(const std::pair<Ball,std::vector<Bitword> >& b);
     void box_containing_balls(const std::vector<Ball>& balls, cpx& ll, cpx& ur);
     void refine_balls_into_box(std::vector<Ball>& balls, const cpx& ll, const cpx& ur);
     bool is_ball_disjoint(const Ball& b, const cpx& ll, const cpx& ur);

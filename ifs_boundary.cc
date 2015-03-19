@@ -1026,25 +1026,156 @@ double ifs::matching_prefix_radius(Bitword& b,
   //then we need to find the distance to any 0 ball
   //then recursively we need to find the distance 
   //between this ball shifted left (wlog a 0 ball) and the 1 balls, etc
-  if (prefix_len
+  //std::cout << "Finding distance from " << b << " and anything without prefix length " << prefix_len << "\n";
+  if (prefix_len == 1) {
+    return distance_from_other_half(b);
+  } else {
+    double d1 = distance_from_other_half(b);
+    Bitword b2 = b.suffix(b.len-1);
+    double d2 = abs(z)*matching_prefix_radius(b2, prefix_len-1);
+    double d = (d1 < d2 ? d1 : d2);
+    return d;
+  }
 }
 
 /*************************************************************************
  * get the distance from this ball to any ball with a different first letter
  *************************************************************************/
-double ifs::distance_from_other_half(Bitword& b) {
+double ifs::distance_from_other_half(Bitword& bw) {
   double min_r;
   minimal_enclosing_radius(min_r);
   Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
-  Ball test_ball = apply_bitword(b, initial_ball);
-  std::vector<Ball> stack(0);
-  stack.push_back( act_on_left( 1-b.reverse_get(0), initial_ball ) );
-  while (true) {
+  Ball test_ball = apply_bitword(bw, initial_ball);
+  std::deque<Ball> stack(0);
+  stack.push_back( act_on_left( 1-bw.reverse_get(0), initial_ball ) );
+  std::vector<double> min_dists(0);
+  //get the initial distance
+  //std::cout << "Getting distance to other side of " << bw << "\n";
+  min_dists.push_back( (abs(stack.back().center - test_ball.center) - stack.back().radius) - test_ball.radius );
+  while (stack.size() > 0) {
+    Ball b = stack.front();
+    stack.pop_front();
+    //get the distance
+    double d = (abs(b.center-test_ball.center) - b.radius) - test_ball.radius;
+    if ( (int)min_dists.size() >= b.word_len ) { //there is some distance for a ball of this depth
+      if (b.word_len < test_ball.word_len &&  d < min_dists[b.word_len-1] + 2*b.radius ) {
+        stack.push_back( act_on_right(0, b) );
+        stack.push_back( act_on_right(1, b) );
+      }
+      if ( d < min_dists[b.word_len-1] ) {
+        min_dists[b.word_len-1] = d;
+        //std::cout << "New min dist of " << d << " with " << Bitword(b.word, b.word_len) << "\n";
+      }
+    } else { //there isn't a distance for a ball of this depth, so we need to put a new one
+      if ( d < min_dists[b.word_len-2] + 2.0*b.radius*abs(1.0/z) ) {
+        if (b.word_len < test_ball.word_len) {
+          stack.push_back( act_on_right(0, b) );
+          stack.push_back( act_on_right(1, b) );
+        }
+        min_dists.push_back(d);
+        //std::cout << "New beginning min dist of " << d << " with " << Bitword(b.word, b.word_len) << "\n";
+      }
+    }
   }
-  return min_dist;
+  return min_dists.back();
 }
     
+/**************************************************************************
+ * given a ball and bitwords, subdivide into at most two balls, 
+ * together with all the bitwords which agree with them
+ * ************************************************************************/
+std::vector< std::pair<Ball,std::vector<Bitword> > > ifs::subdivide_ball_with_bitwords(const std::pair<Ball,std::vector<Bitword> >& b) {
+  std::vector< std::pair<Ball,std::vector<Bitword> > > ans(2);
+  ans[0].first = act_on_right(0, b.first);
+  ans[0].second.resize(0);
+  ans[1].first = act_on_right(1, b.first);
+  ans[1].second.resize(0);
+  for (int i=0; i<(int)b.second.size(); ++i) {
+    int digit = b.second[i].reverse_get(b.first.word_len);
+    ans[digit].second.push_back(b.second[i]);
+  }
+  if (ans[1].second.size() == 0) ans.erase(ans.begin()+1);
+  if (ans[0].second.size() == 0) ans.erase(ans.begin());
+  return ans;
+}
+/**************************************************************************
+ * compute the minimum distance between two sets of balls
+ * ************************************************************************/
+double ifs::distance_between_bitword_sets(const std::vector<Bitword>& B1, 
+                                          const std::vector<Bitword>& B2) {
+  std::cout << "Finding the distance between the bitword sets:\n";
+  for (int i=0; i<(int)B1.size(); ++i) {
+    std::cout << i << ": " << B1[i] << "\n";
+  }
+  for (int i=0; i<(int)B2.size(); ++i) {
+    std::cout << i << ": " << B2[i] << "\n";
+  }
+  double min_r;
+  minimal_enclosing_radius(min_r);
+  Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
+  Ball f = act_on_left(0, initial_ball);
+  Ball g = act_on_left(1, initial_ball);
+  std::vector<std::pair<Ball, std::vector<Bitword> > > B1_initials(0);
+  B1_initials.push_back( std::make_pair( f, std::vector<Bitword>() ) );
+  B1_initials.push_back( std::make_pair( g, std::vector<Bitword>() ) );
+  std::vector<std::pair<Ball, std::vector<Bitword> > > B2_initials(0);
+  B2_initials.push_back( std::make_pair( f, std::vector<Bitword>() ) );
+  B2_initials.push_back( std::make_pair( g, std::vector<Bitword>() ) );
+  for (int i=0; i<(int)B1.size(); ++i) {
+    int digit = B1[i].reverse_get(0);
+    B1_initials[digit].second.push_back( B1[i] );
+  }
+  if (B1_initials[1].second.size() == 0) B1_initials.erase( B1_initials.begin() + 1 );
+  if (B1_initials[0].second.size() == 0) B1_initials.erase( B1_initials.begin() );
+  for (int i=0; i<(int)B2.size(); ++i) {
+    int digit = B2[i].reverse_get(0);
+    B2_initials[digit].second.push_back( B2[i] );
+  }
+  if (B2_initials[1].second.size() == 0) B2_initials.erase( B2_initials.begin() + 1 );
+  if (B2_initials[0].second.size() == 0) B2_initials.erase( B2_initials.begin() );
+  //now the initials contain all the initial possibilities
+  //build all the pairs
+  std::deque< std::pair< std::pair<Ball,std::vector<Bitword> >, std::pair<Ball,std::vector<Bitword> > > > stack(0);
+  for (int i=0; i<(int)B1_initials.size(); ++i) {
+    for (int j=0; j<(int)B2_initials.size(); ++j) {
+      stack.push_back( std::make_pair( B1_initials[i], B2_initials[j] ) );
+    }
+  }
+  //now recursively search through
+  std::vector<double> min_dists(0);
+  while (stack.size() > 0) {
+    std::pair< std::pair<Ball,std::vector<Bitword> >, std::pair<Ball,std::vector<Bitword> > > b = stack.back();
+    stack.pop_back();
+    
+    std::cout << "Considering the ball pair: " << b.first.first << " " << b.second.first << " with " 
+                                               << b.first.second.size() << " and " << b.second.second.size() << " bitwords\n";
+    
+    double d = abs(b.first.first.center - b.second.first.center) - 2.0*b.first.first.radius;
+    int len = b.first.first.word_len;
 
+    bool full_depth = (len == b.second.second[0].len);
+    bool potentially_good_distance = ((int)min_dists.size() == 0) || 
+                                     ((int)min_dists.size() < len && d < min_dists.back() + 4*b.first.first.radius*abs(1.0/z));
+    if (potentially_good_distance) {
+      //update the recorded distances
+      if ((int)min_dists.size() < len) min_dists.push_back(d);
+      else if (d < min_dists.back()) min_dists.back() = d;
+      
+      if (full_depth) continue;
+      
+      //actually do the subdivision 
+      std::vector< std::pair<Ball,std::vector<Bitword> > > b1_subs = subdivide_ball_with_bitwords(b.first);
+      std::vector< std::pair<Ball,std::vector<Bitword> > > b2_subs = subdivide_ball_with_bitwords(b.second);
+      for (int i=0; i<(int)b1_subs.size(); ++i) {
+        for (int j=0; j<(int)b2_subs.size(); ++j) {
+          stack.push_front(std::make_pair( b1_subs[i], b2_subs[j] ) );
+        }
+      }
+    }
+  }
+  return min_dists.back();
+}
+    
 /**************************************************************************
  * check that all the balls have the given prefix
  **************************************************************************/
@@ -1268,7 +1399,7 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
       prefixes.push_back(boundary_bitwords[j].prefix(current_prefix_length));
       prefix_ranges.push_back(std::make_pair(j, -1));
       //go until the prefix isn't the prefix
-      while (j < boundary_bitwords.size() && boundary_bitwords[j].prefix(current_prefix_length) == prefixes.back()) ++j;
+      while (j < (int)boundary_bitwords.size() && boundary_bitwords[j].prefix(current_prefix_length) == prefixes.back()) ++j;
       prefix_ranges.back().second = j;
     }
     if (verbose>0) {
@@ -1322,12 +1453,13 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
         epsilon = 0;
         return true;
       }
-      
-      //check that the entire interval along the peak 
-      //only touches balls with the desired prefix
       int pb1 = prefix_ranges[i].first + p1;
       int pb2 = prefix_ranges[i].first + p2;
       int pb3 = prefix_ranges[i].first + p3;
+      
+      //check that the entire interval along the peak 
+      //only touches balls with the desired prefix
+      /*
       bool good_interval = true;
       for (int j=pb1; j<=pb3; ++j) {
         std::vector<int> intersecting_balls = balls_which_intersect_ball(boundary_balls[j],
@@ -1340,16 +1472,21 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
       }
       if (verbose>0) std::cout << "The interval is: " << (good_interval ? "good\n" : "bad\n");
       if (!good_interval) continue;
+      */ 
+      //We don't need this -- the only way it could *not* be the interval we 
+      //think is if it previously overlaps a fixed point, which is what we 
+      //want anyway!
+      
       
       //we now have a rigorous conjugacy
       //we just need to determine the epsilon
-      //for each of the three key balls; we need to get the distance 
-      //from any ball that doesn't have the same prefix, say x1,x2,x3
-      //and if the interval between convex hull points is X, X', pb1, pb2, pb3,Y', Y, 
-      //where X' and Y' are last balls which agree with the prefix of pb1 or pb2
-      //then we need to get the distance from any ball in [pb1,Y] from X and 
-      //the distance from any ball in [X,pb3] from Y
-      //and take the minimum
+      //we need to make sure that within a ball of radius epsilon, 
+      //(1) each of the necessary 3 prefix balls is exposed to the boundary
+      //(2) the set of points with the original prefix is an interval
+      //
+      //so it suffices to know (a) the distance from the interval of the 
+      //prefix We to any other prefix and (b) an epsilon for each of the 
+      //three important prefixes
       
       //this will always be taking place in the last gap of the convex hull
       //we need to find out where this is
@@ -1366,36 +1503,45 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
         std::cout << "Convex hull gap: " << convex_hull_boundary_balls.first << " " << convex_hull_boundary_balls.second << "\n";
       }
         
-      
-      //find the first ball which agrees with pb1 to the appropriate length
+      //get the intervals around each ball which have the same important prefix
+      //pb1
       int pb1_prefix_length = current_prefix_length + e_lengths[p1].first + 1;
       Bitword pb1_bitword( boundary_balls[pb1].word, boundary_balls[pb1].word_len );
       Bitword pb1_prefix = pb1_bitword.prefix( pb1_prefix_length ); 
-      if (verbose>0) {
-        std::cout << "Scanning forward from " << convex_hull_boundary_balls.first << " to find prefix " << pb1_prefix << "\n";
-      }
-      std::pair<int,int> safe_interval;
+      std::pair<int,int> pb1_interval_indices;
       int j = convex_hull_boundary_balls.first;
       while ( pb1_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) < pb1_prefix_length ) ++j;
-      safe_interval.first = j;
+      pb1_interval_indices.first = j;
+      while ( pb1_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) == pb1_prefix_length ) ++j;
+      pb1_interval_indices.second = j-1;
       
-      //and find the last ball which agrees with pb3 to the appropriate length
-      int pb3_prefix_length = current_prefix_length + e_lengths[p3].first + 1;
-      Bitword pb3_bitword( boundary_balls[pb3].word, boundary_balls[pb3].word_len );
-      Bitword pb3_prefix = pb3_bitword.prefix( pb3_prefix_length );
-      j = boundary_balls.size()-1;
-      while ( pb3_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) < pb3_prefix_length ) --j;
-      safe_interval.second = j;
-      if (verbose>0) {
-        std::cout << "Safe interval: " << safe_interval.first << " " << safe_interval.second << "\n";
-      }
-      
-      //compute the distance from each of the three balls to any ball with 
-      //a different prefix
+      //pb2 
       int pb2_prefix_length = current_prefix_length + e_lengths[p2].first;  // no +1 ?
       Bitword pb2_bitword( boundary_balls[pb2].word, boundary_balls[pb2].word_len );
       Bitword pb2_prefix = pb2_bitword.prefix( pb2_prefix_length );
+      std::pair<int,int> pb2_interval_indices;
+      while ( pb2_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) < pb2_prefix_length ) ++j;
+      pb2_interval_indices.first = j;
+      while ( pb2_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) == pb2_prefix_length ) ++j;
+      pb2_interval_indices.second = j-1;
       
+      //pb3
+      int pb3_prefix_length = current_prefix_length + e_lengths[p3].first + 1;
+      Bitword pb3_bitword( boundary_balls[pb3].word, boundary_balls[pb3].word_len );
+      Bitword pb3_prefix = pb3_bitword.prefix( pb3_prefix_length );
+      std::pair<int,int> pb3_interval_indices;
+      while ( pb3_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) < pb3_prefix_length ) ++j;
+      pb3_interval_indices.first = j;
+      while ( pb3_prefix.common_prefix(Bitword(boundary_balls[j].word,boundary_balls[j].word_len)) == pb3_prefix_length ) ++j;
+      pb3_interval_indices.second = j-1;
+      
+      if (verbose>0) {
+        std::cout << "Found the intervals pb1: " << pb1_interval_indices.first << " " << pb1_interval_indices.second << 
+                                       "  pb2: " << pb2_interval_indices.first << " " << pb2_interval_indices.second << 
+                                       "  pb3: " << pb3_interval_indices.first << " " << pb3_interval_indices.second << "\n";
+      }
+      
+      //find the distance between balls and any ball with a different prefix
       double pb1_distance = matching_prefix_radius(pb1_bitword, pb1_prefix_length);
       double pb2_distance = matching_prefix_radius(pb2_bitword, pb2_prefix_length);
       double pb3_distance = matching_prefix_radius(pb3_bitword, pb3_prefix_length);
@@ -1403,6 +1549,98 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
       if (verbose>0) {
         std::cout << "Ball distances: p1: " << pb1_distance << " p2: " << pb2_distance << " p3: " << pb3_distance << "\n";
       }
+      
+      //for each ball, get two distances: if the convex hull 
+      //interval is X,Y and the interval around pb1 is A,B
+      //then get the two distances ([X,pb1] vs [B,Y]) and ([X,A] vs [pb1,Y])
+      //pb1:
+      std::vector<Bitword> pb1_interval_X_pb1(pb1 - convex_hull_boundary_balls.first + 1);
+      for (j=0; j<(int)pb1_interval_X_pb1.size(); ++j) {
+        pb1_interval_X_pb1[j] = boundary_bitwords[convex_hull_boundary_balls.first+j];
+      }
+      std::vector<Bitword> pb1_interval_B_Y(0);
+      j = pb1_interval_indices.second+1;
+      while (j != convex_hull_boundary_balls.second+1) {
+        pb1_interval_B_Y.push_back( boundary_bitwords[j] );
+        j = (j==(int)boundary_bitwords.size()-1 ? 0 : j+1);
+      }
+      std::vector<Bitword> pb1_interval_X_A(pb1_interval_indices.first - convex_hull_boundary_balls.first);
+      for (j=0; j<(int)pb1_interval_X_A.size(); ++j) {
+        pb1_interval_X_A[j] = boundary_bitwords[convex_hull_boundary_balls.first+j];
+      }
+      std::vector<Bitword> pb1_interval_pb1_Y(0);
+      j = pb1;
+      while (j != convex_hull_boundary_balls.second + 1) {
+        pb1_interval_pb1_Y.push_back( boundary_bitwords[j] );
+        j = (j==(int)boundary_bitwords.size()-1 ? 0 : j+1);
+      }
+      
+      //pb2:
+      std::vector<Bitword> pb2_interval_X_pb2(pb2 - convex_hull_boundary_balls.first + 1);
+      for (j=0; j<(int)pb2_interval_X_pb2.size(); ++j) {
+        pb2_interval_X_pb2[j] = boundary_bitwords[convex_hull_boundary_balls.first+j];
+      }
+      std::vector<Bitword> pb2_interval_B_Y(0);
+      j = pb2_interval_indices.second+1;
+      while (j != convex_hull_boundary_balls.second+1) {
+        pb2_interval_B_Y.push_back( boundary_bitwords[j] );
+        j = (j==(int)boundary_bitwords.size()-1 ? 0 : j+1);
+      }
+      std::vector<Bitword> pb2_interval_X_A(pb2_interval_indices.first - convex_hull_boundary_balls.first);
+      for (j=0; j<(int)pb2_interval_X_A.size(); ++j) {
+        pb2_interval_X_A[j] = boundary_bitwords[convex_hull_boundary_balls.first+j];
+      }
+      std::vector<Bitword> pb2_interval_pb2_Y(0);
+      j = pb2;
+      while (j != convex_hull_boundary_balls.second + 1) {
+        pb2_interval_pb2_Y.push_back( boundary_bitwords[j] );
+        j = (j==(int)boundary_bitwords.size()-1 ? 0 : j+1);
+      }
+      //pb3:
+      std::vector<Bitword> pb3_interval_X_pb3(pb3 - convex_hull_boundary_balls.first + 1);
+      for (j=0; j<(int)pb3_interval_X_pb3.size(); ++j) {
+        pb3_interval_X_pb3[j] = boundary_bitwords[convex_hull_boundary_balls.first+j];
+      }
+      std::vector<Bitword> pb3_interval_B_Y(0);
+      j = pb3_interval_indices.second+1;
+      while (j != convex_hull_boundary_balls.second+1) {
+        pb3_interval_B_Y.push_back( boundary_bitwords[j] );
+        j = (j==(int)boundary_bitwords.size()-1 ? 0 : j+1);
+      }
+      std::vector<Bitword> pb3_interval_X_A(pb3_interval_indices.first - convex_hull_boundary_balls.first);
+      for (j=0; j<(int)pb3_interval_X_A.size(); ++j) {
+        pb3_interval_X_A[j] = boundary_bitwords[convex_hull_boundary_balls.first+j];
+      }
+      std::vector<Bitword> pb3_interval_pb3_Y(0);
+      j = pb3;
+      while (j != convex_hull_boundary_balls.second + 1) {
+        pb3_interval_pb3_Y.push_back( boundary_bitwords[j] );
+        j = (j==(int)boundary_bitwords.size()-1 ? 0 : j+1);
+      }
+      
+      if (verbose>0) {
+        std::cout << "Built intervals of size: \n";
+        std::cout << "pb1: " << pb1_interval_X_pb1.size() << " " << pb1_interval_B_Y.size() <<
+                                pb1_interval_X_A.size()   << " " <<  pb1_interval_pb1_Y.size() << "\n";
+        std::cout << "pb2: " << pb2_interval_X_pb2.size() << " " << pb2_interval_B_Y.size() <<
+                                pb2_interval_X_A.size()   << " " <<  pb2_interval_pb2_Y.size() << "\n";
+        std::cout << "pb3: " << pb3_interval_X_pb3.size() << " " << pb3_interval_B_Y.size() <<
+                                pb3_interval_X_A.size()   << " " <<  pb3_interval_pb3_Y.size() << "\n";
+      }
+      
+      double pb1_interval_distance_1 = distance_between_bitword_sets(pb1_interval_X_pb1, pb1_interval_B_Y);
+      double pb1_interval_distance_2 = distance_between_bitword_sets(pb1_interval_X_A, pb1_interval_pb1_Y);
+      double pb2_interval_distance_1 = distance_between_bitword_sets(pb2_interval_X_pb2, pb2_interval_B_Y);
+      double pb2_interval_distance_2 = distance_between_bitword_sets(pb2_interval_X_A, pb2_interval_pb2_Y);
+      double pb3_interval_distance_1 = distance_between_bitword_sets(pb3_interval_X_pb3, pb3_interval_B_Y);
+      double pb3_interval_distance_2 = distance_between_bitword_sets(pb3_interval_X_A, pb3_interval_pb3_Y);
+      
+      if (verbose>0) {
+        std::cout << "Computed interval distances: pb1: " << pb1_interval_distance_1 << " " << pb1_interval_distance_2 << 
+                                                "  pb2: " << pb2_interval_distance_1 << " " << pb2_interval_distance_2 << 
+                                                "  pb3: " << pb3_interval_distance_1 << " " << pb3_interval_distance_2 << "\n";
+      }
+      
       
       return true;
       

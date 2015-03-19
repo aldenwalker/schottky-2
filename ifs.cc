@@ -198,6 +198,11 @@ std::ostream& operator<<(std::ostream& os, const Bitword& b) {
   return os << w;
 }
 
+
+int Bitword::get(int n) const {
+  return w[n];
+}
+
 int Bitword::reverse_get(int n) const {
   return w[len-n-1];
 }
