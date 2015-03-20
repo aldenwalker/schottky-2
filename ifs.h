@@ -83,6 +83,7 @@ void box_containing_points(const std::vector<cpx>& points, cpx& ll, cpx& ur);
 void non_grid_ball_boundary_indices(std::vector<int>& boundary, 
                                     std::vector<Ball>& balls, 
                                     std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                    bool only_1_section=false,
                                     int verbose=0);
 
 std::vector<int> balls_which_intersect_ball(Ball& b, 
@@ -302,6 +303,9 @@ class ifs{
                                                                   bool find_all_depths, 
                                                                   int verbose=0);
     double nonduplicate_first_letter_distance(int n_depth, Ball initial_ball, int temp_list_max=0, int verbose=0);
+    std::vector<double> shortest_nonintersection_distances(int n_depth, 
+                                                           Ball& initial_ball, 
+                                                           int verbose=0);
     
     //trap construction
     bool draw_trap_mode;      //whether to check for a trap and draw it in limit set mode

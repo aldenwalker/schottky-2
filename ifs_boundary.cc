@@ -911,10 +911,14 @@ int next_intersecting_ball_after_ball(std::vector<Ball>& balls,
 /****************************************************************************
 * compute boundary balls not using a trap grid
 * this function will always start with the first (top) f-ball
+* *unless* only_1_section is true, in which case it'll return 
+* the set of balls on the boundary from the rightmost 1-ball to the junction 
+* with the 0 side
 ****************************************************************************/
 void non_grid_ball_boundary_indices(std::vector<int>& boundary, 
                                     std::vector<Ball>& balls, 
                                     std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                    bool only_1_section,
                                     int verbose) {
   boundary.resize(0);
   int ball_depth = balls[0].word_len;
@@ -969,6 +973,12 @@ void non_grid_ball_boundary_indices(std::vector<int>& boundary,
     //next becomes current and current becomes previous
     prev_ball_i = current_ball_i;
     current_ball_i = next_ball_i;
+    
+    //if we're suppose to bail out when we hit the 0 side, we need to check 
+    //for that
+    if (only_1_section) {
+      if ( ((current_ball_i >> (ball_depth-1))&1) == 0 ) return;
+    }
     
     //compute the intersecting balls
     intersecting_balls = balls_which_intersect_ball(balls[current_ball_i], intersection_pairs, verbose);
@@ -1190,6 +1200,58 @@ bool check_ball_prefixes(std::vector<Ball>& balls,
   }
   return true;
 }
+
+
+/*************************************************************************
+ * at each depth up through n_depth, find the closest pair of balls 
+ * (across fL,gL) which don't intersect
+ *************************************************************************/
+std::vector<double> ifs::shortest_nonintersection_distances(int n_depth, 
+                                                            Ball& initial_ball, 
+                                                            int verbose) {
+  //at index i-1, we store the minimum distance at depth i
+  std::vector<double> ans(n_depth, -1);
+  Ball bf = act_on_right(0, initial_ball);
+  Ball bg = act_on_right(1, initial_ball);
+  std::deque<std::pair<Ball,Ball> > stack(0);
+  stack.push_back(std::make_pair(bf,bg));
+  while (stack.size() > 0) {
+    std::pair<Ball,Ball> bp = stack.back();
+    stack.pop_back();
+    double d = (abs(bp.first.center - bp.second.center) - bp.first.radius) - bp.second.radius;
+    int b_depth = bp.first.word_len;
+    bool subdivide = (b_depth < n_depth) && (ans[b_depth-1] < 0 || d < ans[b_depth-1] + 4*bp.first.radius);
+    bool new_min = (d > 0) && (ans[b_depth-1] < 0 || d < ans[b_depth-1]);
+    if (new_min) {
+      ans[b_depth-1] = d;
+      if (verbose>0) {
+        std::cout << "New min at depth " << b_depth << " of " << d << " with " 
+                  << Bitword(bp.first.word, bp.first.word_len) << " " << Bitword(bp.second.word, bp.second.word_len) << "\n";
+      }
+    }
+    if (subdivide) {
+      Ball b1f = act_on_right(0, bp.first);
+      Ball b1g = act_on_right(1, bp.first);
+      Ball b2f = act_on_right(0, bp.second);
+      Ball b2g = act_on_right(1, bp.second);
+      stack.push_front(std::make_pair(b1f, b2f));
+      stack.push_front(std::make_pair(b1f, b2g));
+      stack.push_front(std::make_pair(b1g, b2f));
+      stack.push_front(std::make_pair(b1g, b2g));
+    }
+  }
+  return ans;
+}
+
+
+
+
+
+
+
+
+
+
 /**************************************************************************
  * functions to certify that the linear semiconjugacy is a conjugacy
  **************************************************************************/
@@ -1279,11 +1341,13 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
     std::cout << "Two discontinuities case\n";
   }
   
-  //get the boundary (it is guaranteed to start at the g->f junction)
+  //get the boundary -- normally, it is guaranteed to start at the g->f junction,
+  //but we only need the section which runs from the rightmost 1-ball to 
+  //the 0 balls, so we ask the function for that interval
   std::vector<int> boundary_indices(0);
   std::vector<Ball> boundary_balls(0);
   std::vector<Bitword> boundary_bitwords(0);
-  non_grid_ball_boundary_indices(boundary_indices, balls, intersection_pairs, verbose-1);
+  non_grid_ball_boundary_indices(boundary_indices, balls, intersection_pairs, true, verbose-1);
   boundary_balls.resize(boundary_indices.size());
   boundary_bitwords.resize(boundary_indices.size());
   for (int i=0; i<(int)boundary_indices.size(); ++i) {
@@ -1299,17 +1363,17 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
   }
   
   //get the convex hull
-  std::vector<int> ch;
-  std::vector<cpx> ch_points;
-  std::vector<halfspace> ch_halfspaces;
-  ball_convex_hull(ch, ch_points, ch_halfspaces, boundary_balls);
+  //std::vector<int> ch;
+  //std::vector<cpx> ch_points;
+  //std::vector<halfspace> ch_halfspaces;
+  //ball_convex_hull(ch, ch_points, ch_halfspaces, boundary_balls);
   
-  if (verbose>0) {
-    std::cout << "Convex hull:\n";
-    for (int i=0; i<(int)ch.size(); ++i) {
-      std::cout << i << ": " << ch[i] << "\n";
-    }
-  }
+  //if (verbose>0) {
+  //  std::cout << "Convex hull:\n";
+  //  for (int i=0; i<(int)ch.size(); ++i) {
+  //    std::cout << i << ": " << ch[i] << "\n";
+  //  }
+  //}
   
   //since we have restricted the argument of the parameter, we only need the 
   //following: cyclically in order x,y,z,w,a, where x,y,z,w,a are certified 
@@ -1453,13 +1517,70 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
         epsilon = 0;
         return true;
       }
+      
+      //we now have a rigorous conjugacy
+      //we just need to determine the epsilon
+      //it is sufficient to find a ball such that the intersection
+      //pairs are smaller or remain the same
+      std::vector<double>  ND = shortest_nonintersection_distances(n_depth, initial_ball, 0);
+      
+      if (verbose>0) {
+        std::cout << "Nonintersection distances:\n";
+        for (int j=0; j<(int)ND.size(); ++j) {
+          std::cout << j+1 << ": " << ND[j] << "\n";
+        }
+      }
+      
+      //find the bound on the distance for z: for each ball distance, 
+      //we get derivative estimate, and we know that the distance 
+      //can be covered by that derivative plus the rate at which the radii 
+      //can change (times 2), which is 11.6569
+      double min_z_epsilon = -1;
+      double Z = 1.0/sqrt(2.0);
+      double Zm1 = Z-1.0;
+      double radius_deriv = 11.6569;
+      for (int j=0; j<(int)ND.size(); ++j) {
+        double diff_deriv = (2.0 + 2.0*(-1.0 + (j+1)*Zm1)*pow(Z,j+1)) / (Zm1*Zm1);
+        double total_deriv = diff_deriv + 2*radius_deriv;
+        double z_epsilon = ND[j] / total_deriv;
+        if (verbose>0) std::cout << "Computed total deriv " << total_deriv << " and epsilon from depth " << j+1 << ": " << z_epsilon << "\n";
+        if (z_epsilon > 0 && (min_z_epsilon < 0 || z_epsilon < min_z_epsilon)) {
+          min_z_epsilon = z_epsilon;
+        }
+      }
+      
+      epsilon = min_z_epsilon;      
+      
+      return true;
+      
+      
+    }
+    if (!some_ok_prefix) break;
+    ++current_prefix_length;
+  }
+
+  return false;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
       int pb1 = prefix_ranges[i].first + p1;
       int pb2 = prefix_ranges[i].first + p2;
       int pb3 = prefix_ranges[i].first + p3;
       
       //check that the entire interval along the peak 
       //only touches balls with the desired prefix
-      /*
       bool good_interval = true;
       for (int j=pb1; j<=pb3; ++j) {
         std::vector<int> intersecting_balls = balls_which_intersect_ball(boundary_balls[j],
@@ -1472,14 +1593,15 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
       }
       if (verbose>0) std::cout << "The interval is: " << (good_interval ? "good\n" : "bad\n");
       if (!good_interval) continue;
-      */ 
+      
       //We don't need this -- the only way it could *not* be the interval we 
       //think is if it previously overlaps a fixed point, which is what we 
       //want anyway!
+
+
+
       
       
-      //we now have a rigorous conjugacy
-      //we just need to determine the epsilon
       //we need to make sure that within a ball of radius epsilon, 
       //(1) each of the necessary 3 prefix balls is exposed to the boundary
       //(2) the set of points with the original prefix is an interval
@@ -1640,31 +1762,8 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
                                                 "  pb2: " << pb2_interval_distance_1 << " " << pb2_interval_distance_2 << 
                                                 "  pb3: " << pb3_interval_distance_1 << " " << pb3_interval_distance_2 << "\n";
       }
-      
-      
-      return true;
-      
-      
-    }
-    if (!some_ok_prefix) break;
-    ++current_prefix_length;
-  }
 
-  return false;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
+*/
 
 
 
