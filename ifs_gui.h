@@ -99,6 +99,8 @@ struct IFSPath {
   std::vector<std::pair<Bitword,Bitword> > uv_words;
   bool has_half_words;
   std::vector<Bitword> half_words;
+  bool has_conjugacy_balls;
+  std::vector<Ball> conjugacy_balls;
   int half_depth;
   int half_start;
   int half_end;
@@ -108,11 +110,12 @@ struct IFSPath {
   IFSPath() {
     is_valid = false;
     path.resize(0);
-    closed = has_traps = has_coordinates = has_uv_words = has_half_words = false;
+    closed = has_traps = has_coordinates = has_uv_words = has_half_words = has_conjugacy_balls = false;
     traps.resize(0);
     trap_colors.resize(0);
     coordinates.resize(0);
     uv_words.resize(0);
+    conjugacy_balls.resize(0);
     movie_length = 10;
     movie_fps = 30;
     movie_with_mandelbrot = false;
@@ -236,6 +239,7 @@ struct IFSGui {
   void find_traps_along_path(int verbose);
   void find_traps_along_circle_in_window(int verbose, bool do_drawing=true);
   void find_coordinates_along_path(int verbose);
+  void find_conjugacies_along_path(int verbose);
   
   //graphics stuff
   Display* display;

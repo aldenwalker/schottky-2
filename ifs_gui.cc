@@ -2653,6 +2653,16 @@ void IFSGui::find_traps_along_path(int verbose) {
 }
 
 
+void IFSGui::find_conjugacies_along_path(int verbose) {
+  if (!path.is_valid || currently_drawing_path || path.path.size() == 0) return;
+  ifs temp_IFS;
+  path.conjugacy_balls.resize(0);
+  //make a stack of intervals to certify
+  //each interval
+}
+
+
+
 void IFSGui::find_traps_along_circle_in_window(int verbose, bool do_drawing) {
   double PI = 3.14159265358979323846;
   std::cout.precision(12);
