@@ -1596,14 +1596,24 @@ void IFSGui::draw_gifs_limit() {
   double PI = 3.14159265358979323846;
 
   //create the gifs object
-  std::vector<cpx> c(4);
-  std::vector<cpx> f(4);
-  c[0] = cpx(0,1.0); 
-  c[1] = cpx(-sin(PI/3.0), -cos(PI/3.0)); 
-  c[2] = cpx(sin(PI/3.0), -cos(PI/3.0));
-  c[3] = cpx(0,0);
-  f[0] = IFS.z.real(); f[1] = IFS.z.real(); f[2] = IFS.z.real();
-  f[3] = IFS.z.imag();
+  //Strichartz:
+  //std::vector<cpx> c(4);
+  //std::vector<cpx> f(4);
+  //c[0] = cpx(0,1.0); 
+  //c[1] = cpx(-sin(PI/3.0), -cos(PI/3.0)); 
+  //c[2] = cpx(sin(PI/3.0), -cos(PI/3.0));
+  //c[3] = cpx(0,0);
+  //f[0] = IFS.z.real(); f[1] = IFS.z.real(); f[2] = IFS.z.real();
+  //f[3] = IFS.z.imag();
+  
+  //+/-1 version of ifs:
+  std::vector<cpx> c(2);
+  std::vector<cpx> f(2);
+  c[0] = -1.0/(1.0-IFS.z);
+  c[1] = 1.0/(1.0-IFS.z);
+  f[0] = IFS.z;
+  f[1] = IFS.z;
+  
   
   gIFS gifs(f,c);
   
@@ -2081,14 +2091,21 @@ void IFSGui::draw_mand() {
         } else if (limit_gifs) {
          //create the gifs object
           double PI = 3.14159265358979323846;
-          std::vector<cpx> cs(4);
-          std::vector<cpx> fs(4);
-          cs[0] = cpx(0,1.0); 
-          cs[1] = cpx(-sin(PI/3.0), -cos(PI/3.0)); 
-          cs[2] = cpx(sin(PI/3.0), -cos(PI/3.0));
-          cs[3] = cpx(0,0);
-          fs[0] = c.real(); fs[1] = c.real(); fs[2] = c.real();
-          fs[3] = c.imag();
+          //std::vector<cpx> cs(4);
+          //std::vector<cpx> fs(4);
+          //cs[0] = cpx(0,1.0); 
+          //cs[1] = cpx(-sin(PI/3.0), -cos(PI/3.0)); 
+          //cs[2] = cpx(sin(PI/3.0), -cos(PI/3.0));
+          //cs[3] = cpx(0,0);
+          //fs[0] = c.real(); fs[1] = c.real(); fs[2] = c.real();
+          //fs[3] = c.imag();
+            //+/-1 version of ifs:
+          std::vector<cpx> cs(2);
+          std::vector<cpx> fs(2);
+          cs[0] = -1.0/(1.0-c);
+          cs[1] = 1.0/(1.0-c);
+          fs[0] = c;
+          fs[1] = c;
           gIFS gifs(fs,cs);
           if (!gifs.is_connected(mand_connected_depth, mand_data_grid[i][j].x)) {
             mand_data_grid[i][j].x = -1;
