@@ -1325,7 +1325,7 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
     //2 (1/Sqrt[2])/(1/Sqrt[2] - 1)^2 ~= 16.48528
     //the radii of the disks changes too; it can change as 
     //fast as 11.65685
-    double deriv = 16.4853 + 11.6569;
+    double deriv = 16.4853 + 2*11.6569;
     
     //compute epsilon from the distance
     epsilon = d/deriv;

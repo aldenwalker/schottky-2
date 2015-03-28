@@ -413,6 +413,7 @@ Ball ifs::act_on_right(int index, const Ball& b) const {
     return Ball( b.center + b.to_z, z*b.to_z, z*b.to_w, az*b.radius, b.word<<1, b.word_len+1 );
   } else {
     return Ball( b.center + b.to_w, w*b.to_z, w*b.to_w, aw*b.radius, (b.word<<1)| std::bitset<64>(1), b.word_len+1 );
+    
   }
 }
 
