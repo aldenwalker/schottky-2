@@ -2507,9 +2507,17 @@ void IFSGui::recompute_point_data() {
   } else {    
     point_coordinates_theta = -1;
     point_coordinates_lambda = -1;
+    T.str("");
+    if (IFS.coordinates_from_kneading(point_coordinates_theta, point_coordinates_lambda,
+                                      point_coordinates_depth, 1)) {
+      T << "Theta: " << point_coordinates_theta << " Lambda: " << point_coordinates_lambda;
+    } else {
+      T << "Error";
+    }    
+    /*
     (void) IFS.compute_coordinates(&point_coordinates_theta, 
-                                &point_coordinates_lambda, 
-                                point_coordinates_depth);
+                                   &point_coordinates_lambda, 
+                                   point_coordinates_depth);
     //(void)IFS.compute_new_theta(&point_coordinates_theta, point_coordinates_depth);
     T.str("");
     T << "Theta: " << point_coordinates_theta << " Lambda: " << point_coordinates_lambda;
@@ -2539,6 +2547,7 @@ void IFSGui::recompute_point_data() {
                           BS.outside_lam[i].z << "},";
     }
     std::cout << "\n";
+    */
   }
   W_point_coordinates_status.update_text(T.str());
   

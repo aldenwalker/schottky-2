@@ -71,37 +71,8 @@ struct Ball {
   std::pair<double,double> intersection_interval(const Ball& other) const;
 };
 
+
 std::ostream& operator<<(std::ostream& os, const Ball& b);
-
-void ball_convex_hull(std::vector<int>& ch,
-                      std::vector<cpx>& boundary_points,
-                      std::vector<halfspace>& H,
-                      const std::vector<Ball>& balls);
-
-void box_containing_points(const std::vector<cpx>& points, cpx& ll, cpx& ur);
-
-void non_grid_ball_boundary_indices(std::vector<int>& boundary, 
-                                    std::vector<Ball>& balls, 
-                                    std::vector<std::pair<Ball,Ball> >& intersection_pairs,
-                                    bool only_1_section=false,
-                                    int verbose=0);
-
-std::vector<int> balls_which_intersect_ball(Ball& b, 
-                                            std::vector<std::pair<Ball,Ball> >& intersection_pairs,
-                                            int verbose = 0);
-
-int last_intersecting_ball_before_angle(std::vector<Ball>& balls, 
-                                        int current_ball_i, 
-                                        std::vector<int>& intersecting_balls, 
-                                        double angle,
-                                        int verbose=0);  
-
-int next_intersecting_ball_after_ball(std::vector<Ball>& balls, 
-                                      int current_ball_i, 
-                                      int prev_ball_i, 
-                                      std::vector<int>& intersecting_balls,
-                                      int verbose=0);
-
 
 /**************************************************************************
  * a bit word
@@ -143,6 +114,47 @@ struct Bitword {
 };
 
 std::ostream& operator<<(std::ostream& os, const Bitword& b);
+
+
+
+
+void ball_convex_hull(std::vector<int>& ch,
+                      std::vector<cpx>& boundary_points,
+                      std::vector<halfspace>& H,
+                      const std::vector<Ball>& balls);
+
+void box_containing_points(const std::vector<cpx>& points, cpx& ll, cpx& ur);
+
+void non_grid_ball_boundary_indices(std::vector<int>& boundary, 
+                                    std::vector<Ball>& balls, 
+                                    std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                    bool only_1_section=false,
+                                    int verbose=0);
+
+void non_grid_ball_boundary_transition_indices(Bitword& g_bitword,
+                                               Bitword& f_bitword,
+                                               std::vector<Ball>& balls, 
+                                               std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                               int verbose);
+
+std::vector<int> balls_which_intersect_ball(Ball& b, 
+                                            std::vector<std::pair<Ball,Ball> >& intersection_pairs,
+                                            int verbose = 0);
+
+int last_intersecting_ball_before_angle(std::vector<Ball>& balls, 
+                                        int current_ball_i, 
+                                        std::vector<int>& intersecting_balls, 
+                                        double angle,
+                                        int verbose=0);  
+
+int next_intersecting_ball_after_ball(std::vector<Ball>& balls, 
+                                      int current_ball_i, 
+                                      int prev_ball_i, 
+                                      std::vector<int>& intersecting_balls,
+                                      int verbose=0);
+
+
+
 
 
 
@@ -272,7 +284,10 @@ class ifs{
                                 int n_depth,
                                 int lam_depth);
     bool certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, int verbose);
-    
+    bool coordinates_from_kneading(double& theta, double& lambda, int n_depth, int verbose);
+    bool dynamical_lamination(int n_depth, 
+                              bool only_hiding_ell_f, 
+                              int verbose);
     
     //mandelbrot mode
     cpx center;            // center of screen in mandelbrot mode
