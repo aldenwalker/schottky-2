@@ -2507,8 +2507,10 @@ void IFSGui::recompute_point_data() {
   } else {    
     point_coordinates_theta = -1;
     point_coordinates_lambda = -1;
+    Bitword g_bitword, f_bitword;
     T.str("");
     if (IFS.coordinates_from_kneading(point_coordinates_theta, point_coordinates_lambda,
+                                      g_bitword, f_bitword,
                                       point_coordinates_depth, 1)) {
       T << "Theta: " << point_coordinates_theta << " Lambda: " << point_coordinates_lambda;
     } else {
@@ -2571,6 +2573,18 @@ void IFSGui::find_coordinates_along_path(int verbose) {
   if (!path.is_valid || currently_drawing_path || path.path.size() == 0) return;
   ifs temp_IFS;
   path.coordinates.resize(0);
+  int good_count = 0;
+  for (int i=0; i<(int)path.path.size(); ++i) {
+    temp_IFS.set_params(path.path[i], path.path[i]);
+    Bitword g_bitword, f_bitword;
+    double lam, theta;
+    if (temp_IFS.coordinates_from_kneading(theta, lam, g_bitword, f_bitword, mand_theta_depth, 0)) {
+      std::cout << g_bitword << " " << f_bitword << "\n";
+      ++good_count;
+    }
+  }
+  std::cout << good_count << " good out of " << path.path.size() << "\n";
+  /*
   for (int i=0; i<(int)path.path.size(); ++i) {
     temp_IFS.set_params(path.path[i], path.path[i]);
     double t1, ell1;
@@ -2595,6 +2609,7 @@ void IFSGui::find_coordinates_along_path(int verbose) {
     std::cout << path.coordinates[i].second << " " << path.coordinates[i].first << "\n";
   }
   std::cout << "\n";
+  */
 }
 
 

@@ -1647,19 +1647,26 @@ bool ifs::certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, 
  * of the points of intersection
  * *************************************************************************/
 bool ifs::coordinates_from_kneading(double& theta, double& lambda, 
+                                    Bitword& g_bitword, Bitword& f_bitword,
                                     int n_depth, int verbose) {
   //do sanity checks
   if (abs(z) > 1.0/sqrt(2.0)) return false;
-  if (z.real() < 0 || z.imag() < 0) return false;
-  if (arg(z) < 0.15) return false;
+  //if (z.real() < 0 || z.imag() < 0) return false;
+  //if (arg(z) < 0.05) return false;
 
   ifs temp_IFS;
   temp_IFS.set_params(z,z);
   temp_IFS.depth = n_depth;
   
   double min_r;
-  if (!temp_IFS.minimal_enclosing_radius(min_r)) return false;
-  if (!temp_IFS.circ_connected(min_r)) return false;
+  if (!temp_IFS.minimal_enclosing_radius(min_r)) {
+    //std::cout << "no minimal radius\n";
+    return false;
+  }
+  if (!temp_IFS.circ_connected(min_r)) {
+    //std::cout << "not connected\n";
+    return false;
+  }
   
   if (verbose>0) {
     std::cout << "Computing coordinates at " << z << "\n";
@@ -1682,7 +1689,6 @@ bool ifs::coordinates_from_kneading(double& theta, double& lambda,
   
   //the only thing we care about the the address of the balls
   //as we go from g to f, so we get that pair
-  Bitword g_bitword, f_bitword;
   non_grid_ball_boundary_transition_indices(g_bitword, f_bitword,
                                             balls, intersection_pairs, verbose-1);
   if (verbose>0) {

@@ -284,7 +284,9 @@ class ifs{
                                 int n_depth,
                                 int lam_depth);
     bool certify_linear_conjugacy(double& epsilon, int n_depth, bool rigorous, int verbose);
-    bool coordinates_from_kneading(double& theta, double& lambda, int n_depth, int verbose);
+    bool coordinates_from_kneading(double& theta, double& lambda, 
+                                   Bitword& g_bitword, Bitword& f_bitword, 
+                                   int n_depth, int verbose);
     bool dynamical_lamination(int n_depth, 
                               bool only_hiding_ell_f, 
                               int verbose);
