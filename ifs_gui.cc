@@ -832,6 +832,7 @@ void IFSGui::S_mand_overlap_prefix_increase_depth(XEvent* e) {
 
 void IFSGui::S_mand_overlap_prefix_decrease_depth(XEvent* e) {
   if (e->type != ButtonPress) return;
+  if (mand_overlap_prefix_depth == 0) return;
   --mand_overlap_prefix_depth;
   std::stringstream T; T.str(""); T << mand_overlap_prefix_depth;
   W_mand_overlap_prefix_depth_label.update_text(T.str());
@@ -850,6 +851,7 @@ void IFSGui::S_mand_overlap_increase_depth(XEvent* e) {
 
 void IFSGui::S_mand_overlap_decrease_depth(XEvent* e) {
   if (e->type != ButtonPress) return;
+  if (mand_overlap_depth == 0) return;
   --mand_overlap_depth;
   std::stringstream T; T.str(""); T << mand_overlap_depth;
   W_mand_overlap_depth_label.update_text(T.str());
@@ -2071,6 +2073,8 @@ int IFSGui::mand_get_color(PointNd<8,int>& p) {
     return p.z;
   } else if (mand_set_C && p[4] > 0) {
     return p[4];
+  } else if (mand_overlap && p[7] > 0) {
+    return p[7];
   } else if (mand_contains_half && p.y > 0) {
     return p.y;
   } else if (mand_theta && p[5] > 0) {
@@ -2097,7 +2101,20 @@ void IFSGui::mand_draw_ball(const Ball& b, int col) {
 }
   
   
+//for output
+std::ostream& operator<<(std::ostream& os, const std::set<std::pair<Bitword,Bitword> >& b) {
+  std::set<std::pair<Bitword,Bitword> >::iterator it = b.begin();
+  os << "{";
+  while (it != b.end()) {
+    os << "(" << it->first << "," << it->second << ") ";
+    it++;
+  }
+  os << "}";
+  return os;
+}
 
+  
+  
 //draw the mandelbrot set
 void IFSGui::draw_mand() {
   ifs temp_IFS;
@@ -2124,7 +2141,7 @@ void IFSGui::draw_mand() {
   if (!mand_grid_overlap_valid) {
     mand_overlap_data_grid.resize(mand_num_pixel_groups);
     for (int i=0; i<mand_num_pixel_groups; ++i) {
-      //mand_overlap_data_grid[i] = std::vector<std::set<std::pair<Bitword,Bitword> > >(mand_num_pixel_groups, std::set<std::pair<Bitword,Bitword> >());
+      mand_overlap_data_grid[i] = std::vector<std::set<std::pair<Bitword,Bitword> > >(mand_num_pixel_groups, std::set<std::pair<Bitword,Bitword> >());
     }
     overlap_pairs_all.clear();
   }
@@ -2182,8 +2199,11 @@ void IFSGui::draw_mand() {
         //temp_IFS.set_params(c,c);
       }
       if (mand_overlap && !mand_grid_overlap_valid) {
-        //temp_IFS.find_overlap_prefixes(mand_overlap_data_grid[i][j], mand_overlap_prefix_depth, mand_overlap_depth);
+        temp_IFS.find_overlap_prefixes(mand_overlap_data_grid[i][j], mand_overlap_prefix_depth, mand_overlap_depth);
+        //std::cout << "Got pixel overlap set: " << mand_overlap_data_grid[i][j] << "\n";
         overlap_pairs_all.insert(mand_overlap_data_grid[i][j].begin(), mand_overlap_data_grid[i][j].end());
+        //std::cout << "Current all overlap set: " << overlap_pairs_all << "\n";
+        mand_data_grid[i][j][7] = -1;
       }
       if (mand_trap && !mand_grid_trap_valid && found_TLB) {
         double trap_radius;
@@ -2299,6 +2319,37 @@ void IFSGui::draw_mand() {
     int num_overlap_pairs = overlap_pairs_all.size();
     //we need to find that many colors
     std::map<std::pair<Bitword,Bitword>, int> pair_to_color;
+    //we'll use just shades of gray?  Divide the range 0.5 to 0.8 into 
+    //chunks
+    double color_chunk_step = (0.8-0.5)/(double)num_overlap_pairs;
+    double current_color = 0.5;
+    std::set<std::pair<Bitword,Bitword> >::iterator it = overlap_pairs_all.begin();
+    std::cout << "Found " << num_overlap_pairs << " pairs:\n";
+    while ( it != overlap_pairs_all.end() ) {
+      pair_to_color[*it] = get_rgb_color( current_color, current_color, current_color );
+      std::cout << it->second << " " << it->first << "\n";// << ": " << pair_to_color[*it] << "\n";
+      current_color += color_chunk_step;
+      it++;
+    }
+    
+    for (int i=0; i<mand_num_pixel_groups; ++i) {
+      for (int j=0; j<mand_num_pixel_groups; ++j) {
+        if (mand_overlap_data_grid[i][j].size() == 0) continue;
+        mand_data_grid[i][j][7] = pair_to_color[*mand_overlap_data_grid[i][j].begin()];
+        int col = mand_get_color(mand_data_grid[i][j]);
+        XSetForeground(display, MW.gc, col);
+        XFillRectangle(display, MW.p, MW.gc, i*mand_pixel_group_size, 
+                                             j*mand_pixel_group_size, 
+                                             mand_pixel_group_size, 
+                                             mand_pixel_group_size);
+        XCopyArea(display, MW.p, main_window, MW.gc, i*mand_pixel_group_size, 
+                                                     j*mand_pixel_group_size, 
+                                                     mand_pixel_group_size, 
+                                                     mand_pixel_group_size, 
+                                                     MW.ul.x + i*mand_pixel_group_size,
+                                                     MW.ul.y + j*mand_pixel_group_size);
+      }
+    }
     
   }
   

@@ -3,6 +3,7 @@
 
 #include <ostream>
 #include <bitset>
+#include <set>
 
 #include "graphics.h"
 #include "cpx.h"
@@ -86,6 +87,9 @@ struct Bitword {
   }
   Bitword (const std::bitset<64>& W, int L) {
     w = W;
+    //std::bitset<64> mask(1);
+    //mask <<= L;
+    //w = w & (~mask);
     len = L;
   }
   Bitword (int x, int L) {
@@ -258,7 +262,9 @@ class ifs{
     void intersection_prefixes(std::vector<std::pair<Bitword,Bitword> >& i_pairs, 
                                int depth,
                                int verbose);
-    
+    bool find_overlap_prefixes(std::set<std::pair<Bitword,Bitword> >& ans,
+                               int prefix_depth,
+                               int total_depth);
     
     
     //IFS drawing

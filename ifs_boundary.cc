@@ -1702,6 +1702,86 @@ bool ifs::coordinates_from_kneading(double& theta, double& lambda,
 }
 
 
+/***************************************************************************
+ * find overlap prefixes to a certain depth
+ * ************************************************************************/
+bool ifs::find_overlap_prefixes(std::set<std::pair<Bitword,Bitword> >& ans,
+                                int prefix_depth,
+                                int total_depth) {
+  ifs temp_IFS;
+  temp_IFS.set_params(z,z);
+  temp_IFS.depth = total_depth;
+  
+  if (abs(z) > (1.0/sqrt(2))*1.001) return false;
+  if (fabs(z.imag()) < 0.05) return false;
+  
+  double min_r;
+  if (!minimal_enclosing_radius(min_r)) return false;
+  
+  if (total_depth < prefix_depth) return false;
+  if (prefix_depth < 1) return false;
+  
+  ans.clear();
+  
+  //first create a list of all of the ball pairs which 
+  //are of the prefix depth and which intersect
+  Ball initial_ball(0.5,(z-1.0)/2.0,(1.0-w)/2.0,min_r);
+  std::vector<std::pair<Ball,Ball> > stack(1);
+  std::vector<std::pair<Ball,Ball> > prefix_depth_pairs(0);
+  stack[0] = std::make_pair(act_on_right(0,initial_ball), act_on_right(1,initial_ball));
+  while ((int)stack.size() > 0) {
+    std::pair<Ball,Ball> b = stack.back();
+    stack.pop_back();
+    if (b.first.is_disjoint(b.second)) continue;
+    if (b.first.word_len == prefix_depth) {
+      prefix_depth_pairs.push_back(b);
+      continue;
+    }
+    Ball f1 = act_on_right(0, b.first);
+    Ball f2 = act_on_right(1, b.first);
+    Ball g1 = act_on_right(0, b.second);
+    Ball g2 = act_on_right(1, b.second);
+    stack.push_back(std::make_pair(f1, g1));
+    stack.push_back(std::make_pair(f1, g2));
+    stack.push_back(std::make_pair(f2, g1));
+    stack.push_back(std::make_pair(f2, g2));
+  }
+  
+  //now we have a list of all these balls; for each, 
+  //we need to check if it persists down to the 
+  //total depth
+  std::vector<std::pair<Ball,Ball> > pair_stack;
+  for (int i=0; i<(int)prefix_depth_pairs.size(); ++i) {
+    pair_stack.resize(1);
+    pair_stack[0] = prefix_depth_pairs[i];
+    while ((int)pair_stack.size() > 0) {
+      std::pair<Ball,Ball> b = pair_stack.back();
+      pair_stack.pop_back();
+      if (b.first.is_disjoint(b.second)) continue;
+      if (b.first.word_len == total_depth) {
+        Bitword bf(b.first.word, total_depth);
+        Bitword bg(b.second.word, total_depth);
+        ans.insert(std::make_pair(bf.prefix(prefix_depth), bg.prefix(prefix_depth) ));
+        break;
+      }
+      Ball f1 = act_on_right(0, b.first);
+      Ball f2 = act_on_right(1, b.first);
+      Ball g1 = act_on_right(0, b.second);
+      Ball g2 = act_on_right(1, b.second);
+      pair_stack.push_back(std::make_pair(f1, g1));
+      pair_stack.push_back(std::make_pair(f1, g2));
+      pair_stack.push_back(std::make_pair(f2, g1));
+      pair_stack.push_back(std::make_pair(f2, g2));
+    }
+  }
+  return (int)ans.size() > 0;
+}
+
+
+
+
+
+
 /****************************************************************************
  * find the dynamical lamination
  * optionally, find only the addresses of (leaves hiding) the endpoints
