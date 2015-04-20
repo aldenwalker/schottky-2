@@ -164,6 +164,9 @@ struct IFSGui {
   int mand_connected_depth;
   bool mand_contains_half;
   int mand_contains_half_depth;
+  bool mand_overlap;
+  int mand_overlap_prefix_depth;
+  int mand_overlap_depth;
   bool mand_trap;
   int mand_trap_depth;
   bool mand_limit_trap;
@@ -179,14 +182,15 @@ struct IFSGui {
   Point2d<int> mand_cpx_to_pixel_group(const cpx& c);
   cpx mand_pixel_to_cpx(const Point2d<int>& p);
   Point2d<int> mand_cpx_to_pixel(const cpx& c);
-  int mand_get_color(PointNd<7,int>& p);
+  int mand_get_color(PointNd<8,int>& p);
   int mand_output_picture_size;
   
 
   //data for mandelbrot
-  std::vector<std::vector<PointNd<7,int> > > mand_data_grid;
+  std::vector<std::vector<PointNd<8,int> > > mand_data_grid;
   bool mand_grid_connected_valid;
   bool mand_grid_contains_half_valid;
+  bool mand_grid_overlap_valid;
   bool mand_grid_trap_valid;
   bool mand_grid_dirichlet_valid;
   bool mand_grid_set_C_valid;
@@ -335,6 +339,16 @@ struct IFSGui {
   WidgetLeftArrow W_mand_contains_half_depth_leftarrow;
   WidgetText W_mand_contains_half_depth_label;
   WidgetRightArrow W_mand_contains_half_depth_rightarrow;
+  
+  WidgetCheck W_mand_overlap_check;
+  WidgetLeftArrow W_mand_overlap_prefix_depth_leftarrow;
+  WidgetText W_mand_overlap_prefix_depth_label;
+  WidgetRightArrow W_mand_overlap_prefix_depth_rightarrow;
+  WidgetText W_mand_overlap_depth_padding;
+  WidgetLeftArrow W_mand_overlap_depth_leftarrow;
+  WidgetText W_mand_overlap_depth_label;
+  WidgetRightArrow W_mand_overlap_depth_rightarrow;
+  
   WidgetCheck W_mand_trap_check;
   WidgetLeftArrow W_mand_trap_depth_leftarrow;
   WidgetText W_mand_trap_depth_label;
@@ -430,6 +444,11 @@ struct IFSGui {
   void S_mand_contains_half(XEvent* e);
   void S_mand_contains_half_increase_depth(XEvent* e);
   void S_mand_contains_half_decrease_depth(XEvent* e);
+  void S_mand_overlap(XEvent* e);
+  void S_mand_overlap_prefix_increase_depth(XEvent* e);
+  void S_mand_overlap_prefix_decrease_depth(XEvent* e);
+  void S_mand_overlap_increase_depth(XEvent* e);
+  void S_mand_overlap_decrease_depth(XEvent* e);
   void S_mand_trap(XEvent* e);
   void S_mand_trap_increase_depth(XEvent* e);
   void S_mand_trap_decrease_depth(XEvent* e);

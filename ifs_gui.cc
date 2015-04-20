@@ -812,6 +812,55 @@ void IFSGui::S_mand_contains_half_decrease_depth(XEvent* e) {
   }
 }
 
+
+void IFSGui::S_mand_overlap(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  mand_overlap = !mand_overlap;
+  W_mand_overlap_check.checked = mand_overlap;
+  W_mand_overlap_check.redraw();
+  draw_mand();
+}
+
+void IFSGui::S_mand_overlap_prefix_increase_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  ++mand_overlap_prefix_depth;
+  std::stringstream T; T.str(""); T << mand_overlap_prefix_depth;
+  W_mand_overlap_prefix_depth_label.update_text(T.str());
+  mand_grid_overlap_valid = false;
+  if (mand_overlap) draw_mand();
+}
+
+void IFSGui::S_mand_overlap_prefix_decrease_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  --mand_overlap_prefix_depth;
+  std::stringstream T; T.str(""); T << mand_overlap_prefix_depth;
+  W_mand_overlap_prefix_depth_label.update_text(T.str());
+  mand_grid_overlap_valid = false;
+  if (mand_overlap) draw_mand();
+}
+
+void IFSGui::S_mand_overlap_increase_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  ++mand_overlap_depth;
+  std::stringstream T; T.str(""); T << mand_overlap_depth;
+  W_mand_overlap_depth_label.update_text(T.str());
+  mand_grid_overlap_valid = false;
+  if (mand_overlap) draw_mand();
+}
+
+void IFSGui::S_mand_overlap_decrease_depth(XEvent* e) {
+  if (e->type != ButtonPress) return;
+  --mand_overlap_depth;
+  std::stringstream T; T.str(""); T << mand_overlap_depth;
+  W_mand_overlap_depth_label.update_text(T.str());
+  mand_grid_overlap_valid = false;
+  if (mand_overlap) draw_mand();
+}
+
+
+
+
+
 void IFSGui::S_mand_trap(XEvent* e) {
   if (e->type == ButtonPress) {
     mand_trap = !mand_trap;
@@ -2002,7 +2051,7 @@ Point2d<int> IFSGui::mand_cpx_to_pixel(const cpx& c) {
                        W_mand_plot.height - ((c.imag() - mand_ll.imag()) / mand_pixel_width) );
 }
 
-int IFSGui::mand_get_color(PointNd<7,int>& p) {
+int IFSGui::mand_get_color(PointNd<8,int>& p) {
 /*
   if (mand_trap && p.z > 0) { //use the trap color
     return p.z;
@@ -2069,6 +2118,17 @@ void IFSGui::draw_mand() {
   std::map<std::set<std::pair<Bitword,Bitword> >, int> sets_to_colors;
   std::map<std::set<std::pair<Bitword,Bitword> >, int>::iterator it;
   
+  //set up the overlap grid
+  std::set<std::pair<Bitword,Bitword> > overlap_pairs_all;
+  std::vector<std::vector<std::set<std::pair<Bitword,Bitword> > > > mand_overlap_data_grid;
+  if (!mand_grid_overlap_valid) {
+    mand_overlap_data_grid.resize(mand_num_pixel_groups);
+    for (int i=0; i<mand_num_pixel_groups; ++i) {
+      //mand_overlap_data_grid[i] = std::vector<std::set<std::pair<Bitword,Bitword> > >(mand_num_pixel_groups, std::set<std::pair<Bitword,Bitword> >());
+    }
+    overlap_pairs_all.clear();
+  }
+  
   for (int i=0; i<(int)mand_num_pixel_groups; ++i) {
     for (int j=0; j<(int)mand_num_pixel_groups; ++j) {
       
@@ -2120,6 +2180,10 @@ void IFSGui::draw_mand() {
           mand_data_grid[i][j].y = -1;
         }
         //temp_IFS.set_params(c,c);
+      }
+      if (mand_overlap && !mand_grid_overlap_valid) {
+        //temp_IFS.find_overlap_prefixes(mand_overlap_data_grid[i][j], mand_overlap_prefix_depth, mand_overlap_depth);
+        overlap_pairs_all.insert(mand_overlap_data_grid[i][j].begin(), mand_overlap_data_grid[i][j].end());
       }
       if (mand_trap && !mand_grid_trap_valid && found_TLB) {
         double trap_radius;
@@ -2230,8 +2294,18 @@ void IFSGui::draw_mand() {
     }
   }
   
+  //if we're drawing the overlap, we need to go back over
+  if (mand_overlap && !mand_grid_overlap_valid) {
+    int num_overlap_pairs = overlap_pairs_all.size();
+    //we need to find that many colors
+    std::map<std::pair<Bitword,Bitword>, int> pair_to_color;
+    
+  }
+  
+  
   if (mand_connected && !mand_grid_connected_valid) mand_grid_connected_valid = true;
   if (mand_contains_half && !mand_grid_contains_half_valid) mand_grid_contains_half_valid = true;
+  if (mand_overlap && !mand_grid_overlap_valid) mand_grid_overlap_valid = true;
   if (mand_trap && !mand_grid_trap_valid) mand_grid_trap_valid = true;
   if (mand_dirichlet && !mand_grid_dirichlet_valid) mand_grid_dirichlet_valid = true;
   if (mand_set_C && !mand_grid_set_C_valid) mand_grid_set_C_valid = true;
@@ -2393,6 +2467,7 @@ void IFSGui::mand_recenter() {
   mand_ur = c + cpx(radius, radius);
   mand_grid_connected_valid = false;
   mand_grid_contains_half_valid = false;
+  mand_grid_overlap_valid = false;
   mand_grid_trap_valid = false;
   mand_grid_dirichlet_valid = false;
   mand_grid_set_C_valid = false;
@@ -2407,10 +2482,11 @@ void IFSGui::mand_reset_mesh() {
   mand_num_pixel_groups = W_mand_plot.width / mand_pixel_group_size;
   mand_data_grid.resize(mand_num_pixel_groups);
   for (int i=0; i<mand_num_pixel_groups; ++i) {
-    mand_data_grid[i] = std::vector<PointNd<7,int> >(mand_num_pixel_groups, PointNd<7,int>(-1));
+    mand_data_grid[i] = std::vector<PointNd<8,int> >(mand_num_pixel_groups, PointNd<8,int>(-1));
   }
   mand_grid_connected_valid = false;
   mand_grid_contains_half_valid = false;
+  mand_grid_overlap_valid = false;
   mand_grid_trap_valid = false;
   mand_grid_dirichlet_valid = false;
   mand_grid_set_C_valid = false;
@@ -3146,11 +3222,24 @@ void IFSGui::reset_and_pack_window() {
     T.str("");  T << mand_connected_depth;
     W_mand_connected_depth_label = WidgetText(this, T.str(), -1, 20);
     W_mand_connected_depth_rightarrow = WidgetRightArrow(this, 20,20, &IFSGui::S_mand_connected_increase_depth);
+    
     W_mand_contains_half_check = WidgetCheck(this, "Contains 1/2:", 105, 20, (mand_contains_half ? 1 : 0), &IFSGui::S_mand_contains_half);
     W_mand_contains_half_depth_leftarrow = WidgetLeftArrow(this, 20,20, &IFSGui::S_mand_contains_half_decrease_depth);
     T.str("");  T << mand_contains_half_depth;
     W_mand_contains_half_depth_label = WidgetText(this, T.str(), -1, 20);
     W_mand_contains_half_depth_rightarrow = WidgetRightArrow(this, 20,20, &IFSGui::S_mand_contains_half_increase_depth);
+    
+    W_mand_overlap_check = WidgetCheck(this, "Overlap pre:", 105, 20, (mand_overlap ? 1 : 0), &IFSGui::S_mand_overlap);
+    W_mand_overlap_prefix_depth_leftarrow = WidgetLeftArrow(this, 20,20, &IFSGui::S_mand_overlap_prefix_decrease_depth);
+    T.str("");  T << mand_overlap_prefix_depth;
+    W_mand_overlap_prefix_depth_label = WidgetText(this, T.str(), -1, 20);
+    W_mand_overlap_prefix_depth_rightarrow = WidgetRightArrow(this, 20,20, &IFSGui::S_mand_overlap_prefix_increase_depth);
+    W_mand_overlap_depth_padding = WidgetText(this, "    full depth:", 105, 20);
+    W_mand_overlap_depth_leftarrow = WidgetLeftArrow(this, 20,20, &IFSGui::S_mand_overlap_decrease_depth);
+    T.str("");  T << mand_overlap_depth;
+    W_mand_overlap_depth_label = WidgetText(this, T.str(), -1, 20);
+    W_mand_overlap_depth_rightarrow = WidgetRightArrow(this, 20,20, &IFSGui::S_mand_overlap_increase_depth);
+    
     W_mand_trap_check = WidgetCheck(this, "Traps:", 105, 20, (mand_trap ? 1 : 0), &IFSGui::S_mand_trap);
     W_mand_trap_depth_leftarrow = WidgetLeftArrow(this, 20,20, &IFSGui::S_mand_trap_decrease_depth);
     T.str("");  T << mand_trap_depth;
@@ -3252,6 +3341,15 @@ void IFSGui::reset_and_pack_window() {
     pack_widget_upper_right(&W_mand_contains_half_check, &W_mand_contains_half_depth_leftarrow);
     pack_widget_upper_right(&W_mand_contains_half_depth_leftarrow, &W_mand_contains_half_depth_label);
     pack_widget_upper_right(&W_mand_contains_half_depth_label, &W_mand_contains_half_depth_rightarrow);
+    pack_widget_upper_right(&W_mand_plot, &W_mand_overlap_check);
+    pack_widget_upper_right(&W_mand_overlap_check, &W_mand_overlap_prefix_depth_leftarrow);
+    pack_widget_upper_right(&W_mand_overlap_prefix_depth_leftarrow, &W_mand_overlap_prefix_depth_label);
+    pack_widget_upper_right(&W_mand_overlap_prefix_depth_label, &W_mand_overlap_prefix_depth_rightarrow);
+    pack_widget_upper_right(&W_mand_plot, &W_mand_overlap_depth_padding);
+    pack_widget_upper_right(&W_mand_overlap_depth_padding, &W_mand_overlap_depth_leftarrow);
+    pack_widget_upper_right(&W_mand_overlap_depth_leftarrow, &W_mand_overlap_depth_label);
+    pack_widget_upper_right(&W_mand_overlap_depth_label, &W_mand_overlap_depth_rightarrow);
+    
     pack_widget_upper_right(&W_mand_plot, &W_mand_trap_check);
     pack_widget_upper_right(&W_mand_trap_check, &W_mand_trap_depth_leftarrow);
     pack_widget_upper_right(&W_mand_trap_depth_leftarrow, &W_mand_trap_depth_label);
@@ -3444,6 +3542,9 @@ void IFSGui::launch(IFSWindowMode m, const cpx& c) {
   mand_connected_depth = 13;
   mand_contains_half = false;
   mand_contains_half_depth = 16;
+  mand_overlap = false;
+  mand_overlap_prefix_depth = 2;
+  mand_overlap_depth = 12;
   mand_trap = false;
   mand_trap_depth = 20;
   mand_limit_trap = false;
