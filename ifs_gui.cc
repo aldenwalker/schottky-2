@@ -1565,7 +1565,7 @@ void IFSGui::draw_nifs_limit() {
   //nIFS nifs(4, IFS.z);
   nIFS nifs(3,IFS.z);
   //nifs.centers[3] = -2; nifs.centers[4] = 2;
-  nifs.centers[0] = -1; nifs.centers[1] = 0; nifs.centers[2] = 1;
+  nifs.centers[0] = -2; nifs.centers[1] = 0; nifs.centers[2] = 2;
   double min_r = nifs.minimal_initial_radius();
   
   //std::cout << "Got min initial radius of " << min_r << "\n";
@@ -1589,9 +1589,10 @@ void IFSGui::draw_nifs_limit() {
   colors[4] = get_rgb_color(0,1,1);
   
   nBall initial_ball(0,min_r,1);
+  initial_ball = nifs.act_on_right(2, initial_ball);
   
   std::vector< nBall_stuff > stack(0);
-  stack.push_back( nBall_stuff(false, -1, 0, initial_ball) );
+  stack.push_back( nBall_stuff(false, 2, 1, initial_ball) );
   while (stack.size() > 0) {
     nBall_stuff bs = stack.back();
     stack.pop_back();
@@ -2160,8 +2161,8 @@ void IFSGui::draw_mand() {
             mand_data_grid[i][j].x = -1;
           }
         } else if (limit_nifs) {
-          nIFS nifs(3, c);
-          nifs.centers[0] = -1; nifs.centers[1] = 0; nifs.centers[2] = 1;
+          nIFS nifs(2, c);
+          nifs.centers[0] = -1; nifs.centers[1] = 1; //nifs.centers[2] = 1;
           if (!nifs.is_connected(mand_connected_depth, mand_data_grid[i][j].x)) {
             mand_data_grid[i][j].x = -1;
           }
