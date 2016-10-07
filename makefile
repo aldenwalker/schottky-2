@@ -5,8 +5,8 @@ else
   CC=g++
 endif
 CFLAGS=-g -Wall -Wextra -pedantic
-IFLAGS=-I/usr/X11R6/include
-LFLAGS=-L/usr/X11R6/lib -lX11
+IFLAGS=-I/usr/X11R6/include -I/opt/X11/include
+LFLAGS=-L/usr/X11R6/lib -L/opt/X11/lib -lX11
 all: schottky
 
 graphics.o: graphics.cc
